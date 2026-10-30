@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}Incident {{ disruption.disruption_code }} &mdash; Disruption Detail &amp; Impact Analysis{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb Header -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <a href="{{ url_for('logistics.disruptions') }}" class="text-secondary small text-decoration-none">
+        <i class="bi bi-arrow-left me-1"></i>Back to Disruptions
+      </a>
+      <span class="text-muted small">&bull;</span>
+      <span class="text-warning small font-monospace">{{ disruption.disruption_code }}</span>
+      <span class="text-muted small">&bull;</span>
+      <a href="{{ url_for('risk_queue.index', disruption_id=disruption.id) }}" class="text-info small text-decoration-none">
+        <i class="bi bi-sort-numeric-down me-1"></i>Open in Risk Queue
+      </a>
+    </div>
+    <h2 class="h4 fw-bold text-white mb-0">
+      {{ disruption.title }}
+    </h2>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('recovery.compare_candidates', disruption_id=disruption.id) }}" class="btn btn-sm btn-warning text-dark">
+      <i class="bi bi-shield-check me-1"></i> Plan Recovery Options
+    </a>
+    <a href="{{ url_for('risk_queue.index', disruption_id=disruption.id) }}" class="btn btn-sm btn-control-gold">
+      <i class="bi bi-sort-numeric-down me-1"></i> Prioritise Order Queue
+    </a>
+    <a href="{{ url_for('webhooks.simulator') }}" class="btn btn-sm btn-outline-warning">
+      <i class="bi bi-broadcast me-1"></i> Send Webhook Event
+    </a>
+  </div>
+</div>
+
+<!-- Module 5: Visual Supply-Chain Impact Chain Flow -->
+<div class="control-card mb-4">
+  <div class="control-card-header d-flex justify-content-between align-items-center">
+    <h3 class="control-card-title text-white">
+      <i class="bi bi-diagram-3-fill text-info"></i>Multi-Echelon Supply-Chain Impact Chain
+    </h3>
+    <span class="badge bg-dark text-secondary font-monospace" style="font-size: 0.7rem;">
+      Supplier &rarr; Shipment &rarr; Destination Hub &rarr; Inventory/SKU &rarr; Customer Orders
+    </span>
+  </div>
+  <div class="control-card-body p-3">
+    <div class="row g-2 align-items-center text-center">
+      <!-- 1. Supplier -->
+      <div class="col-12 col-md">
+        <div class="p-3 rounded bg-dark border border-secondary h-100">
+          <div class="text-secondary small text-uppercase fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">1. Supplier Origin</div>
+          {% if impact_analysis.supplier %}
+            <div class="text-white fw-bold small">{{ impact_analysis.supplier.name }}</div>
+            <div class="text-warning font-monospace small">{{ impact_analysis.supplier.code }}</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">{{ impact_analysis.supplier.city }}, {{ impact_analysis.supplier.country }}</div>
+            <div class="badge bg-dark text-info border border-secondary mt-1" style="font-size: 0.65rem;">Lead Time: {{ impact_analysis.supplier.lead_time_days }}d</div>
+          {% else %}
+            <div class="text-white fw-bold small">Internal / Network Stock</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">Warehouse Stockout</div>
+            <div class="badge bg-dark text-secondary border border-secondary mt-1" style="font-size: 0.65rem;">No Inbound Supplier</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-12 col-md-auto d-none d-md-block text-secondary">
+        <i class="bi bi-chevron-right fs-4 text-warning"></i>
+      </div>
+
+      <!-- 2. Shipment -->
+      <div class="col-12 col-md">
+        <div class="p-3 rounded bg-dark border {% if impact_analysis.shipment and impact_analysis.shipment.is_delayed %}border-danger{% else %}border-secondary{% endif %} h-100">
+          <div class="text-secondary small text-uppercase fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">2. Freight Transit</div>
+          {% if impact_analysis.shipment %}
+            <div class="text-white font-monospace fw-bold small">{{ impact_analysis.shipment.tracking_number }}</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">{{ impact_analysis.shipment.carrier }} &bull; {{ impact_analysis.shipment.transport_mode }}</div>
+            <span class="badge {% if impact_analysis.shipment.status == 'Delayed' %}bg-danger{% else %}bg-primary{% endif %} mt-1" style="font-size: 0.65rem;">
+              {{ impact_analysis.shipment.status }} (+{{ disruption.delay_hours }}h)
+            </span>
+          {% else %}
+            <div class="text-white font-monospace small">N/A (On-Hand)</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">No Active Inbound PO</div>
+            <span class="badge bg-secondary mt-1" style="font-size: 0.65rem;">Zero In-Transit</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-12 col-md-auto d-none d-md-block text-secondary">
+        <i class="bi bi-chevron-right fs-4 text-warning"></i>
+      </div>
+
+      <!-- 3. Destination Warehouse -->
+      <div class="col-12 col-md">
+        <div class="p-3 rounded bg-dark border border-secondary h-100">
+          <div class="text-secondary small text-uppercase fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">3. Destination Hub</div>
+          {% if impact_analysis.warehouse %}
+            <div class="text-white fw-bold small">{{ impact_analysis.warehouse.code }}</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">{{ impact_analysis.warehouse.name }}</div>
+            <div class="text-info" style="font-size: 0.72rem;"><i class="bi bi-geo-alt me-1"></i>{{ impact_analysis.warehouse.location }}</div>
+          {% else %}
+            <div class="text-secondary font-monospace small">Unknown Hub</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-12 col-md-auto d-none d-md-block text-secondary">
+        <i class="bi bi-chevron-right fs-4 text-warning"></i>
+      </div>
+
+      <!-- 4. Inventory & SKU Deficit -->
+      <div class="col-12 col-md">
+        <div class="p-3 rounded bg-dark border {% if disruption.shortage_category == 'Confirmed Shortage' %}border-danger{% elif disruption.shortage_category == 'Potential Shortage' %}border-warning{% else %}border-secondary{% endif %} h-100">
+          <div class="text-secondary small text-uppercase fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">4. Inventory &amp; SKU</div>
+          {% if impact_analysis.affected_skus %}
+            <div class="text-warning font-monospace fw-bold small">{{ impact_analysis.affected_skus|join(', ') }}</div>
+            {% for sku, m in impact_analysis.shortage_metrics.items() %}
+              <div class="text-white" style="font-size: 0.72rem;">Avail: <strong>{{ m.available_inventory }}</strong> &bull; Demand: <strong>{{ m.total_demand }}</strong></div>
+              {% if m.confirmed_shortage > 0 %}
+                <span class="badge bg-danger mt-1" style="font-size: 0.65rem;">Deficit: -{{ m.confirmed_shortage }} units</span>
+              {% elif m.potential_shortage > 0 %}
+                <span class="badge bg-warning text-dark mt-1" style="font-size: 0.65rem;">Delayed: {{ m.potential_shortage }} units</span>
+              {% else %}
+                <span class="badge bg-success mt-1" style="font-size: 0.65rem;">Balanced</span>
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            <div class="text-muted small">No SKUs Identified</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-12 col-md-auto d-none d-md-block text-secondary">
+        <i class="bi bi-chevron-right fs-4 text-warning"></i>
+      </div>
+
+      <!-- 5. Customer Orders Impact -->
+      <div class="col-12 col-md">
+        <div class="p-3 rounded bg-dark border border-danger h-100">
+          <div class="text-secondary small text-uppercase fw-bold mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">5. Affected Orders</div>
+          <div class="text-danger fw-bold fs-6">{{ affected_orders|length }} Orders</div>
+          <div class="text-secondary font-monospace" style="font-size: 0.72rem;">SLA Commitments At Risk</div>
+          <div class="badge bg-danger mt-1" style="font-size: 0.65rem;">
+            ${{ "{:,.0f}".format(disruption.estimated_financial_impact or 0) }} Exposure
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Impact Narrative -->
+    <div class="mt-3 p-3 rounded bg-dark border border-secondary" style="border-left: 3px solid var(--control-gold) !important;">
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <span class="badge bg-dark text-warning border border-secondary font-monospace">Deterministic Narrative</span>
+        <span class="text-secondary small">&bull; Detected: {{ disruption.detected_at.strftime('%Y-%m-%d %H:%M UTC') }}</span>
+      </div>
+      <p class="text-white small mb-0" style="line-height: 1.6;">
+        {{ impact_analysis.narrative_explanation }}
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <!-- Left Column: Disruption Diagnostics -->
+  <div class="col-12 col-lg-7">
+    <div class="control-card mb-4">
+      <div class="control-card-header d-flex justify-content-between align-items-center">
+        <h3 class="control-card-title text-white">
+          <i class="bi bi-info-circle text-warning"></i>Incident Diagnostics &amp; Facility Parameters
+        </h3>
+        <div>
+          {% if disruption.shortage_category == 'Confirmed Shortage' %}
+            <span class="badge bg-danger"><i class="bi bi-x-circle-fill me-1"></i>Confirmed Shortage</span>
+          {% elif disruption.shortage_category == 'Potential Shortage' %}
+            <span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Potential Shortage</span>
+          {% else %}
+            <span class="badge bg-secondary">Transit Delay</span>
+          {% endif %}
+          <span class="badge {% if disruption.severity == 'Critical' %}bg-danger{% elif disruption.severity == 'High' %}bg-warning text-dark{% else %}bg-primary{% endif %} ms-1">
+            {{ disruption.severity }} Severity
+          </span>
+        </div>
+      </div>
+      <div class="control-card-body">
+        <div class="row g-3 bg-dark p-3 rounded mb-3" style="border: 1px solid var(--border-subtle);">
+          <div class="col-6 col-md-4">
+            <div class="text-secondary small">Disruption Type</div>
+            <div class="text-white fw-bold">{{ disruption.disruption_type }}</div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="text-secondary small">Incident Status</div>
+            <div class="text-white fw-bold">
+              <span class="badge bg-danger">{{ disruption.status }}</span>
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="text-secondary small">Estimated Delay</div>
+            <div class="text-warning font-monospace fw-bold">+{{ disruption.delay_hours }} Hours</div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="text-secondary small">Geographic Node</div>
+            <div class="text-white small">
+              <i class="bi bi-geo-alt text-danger me-1"></i>{{ disruption.location }}
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="text-secondary small">Financial Impact</div>
+            <div class="text-danger font-monospace fw-bold">
+              ${{ "{:,.2f}".format(disruption.estimated_financial_impact or 0) }}
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="text-secondary small">Affected Orders</div>
+            <div class="text-white font-monospace fw-bold">
+              {{ affected_orders|length }} SLA commitments
+            </div>
+          </div>
+        </div>
+
+        <!-- Inventory Balances for Affected SKUs at Destination Hub -->
+        <h6 class="text-secondary small fw-bold mb-2">DESTINATION WAREHOUSE STOCK BALANCES</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-control mb-0">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Item Name</th>
+                <th class="text-end">On-Hand</th>
+                <th class="text-end">Reserved</th>
+                <th class="text-end">Available</th>
+                <th class="text-end">Reorder Pt</th>
+                <th>Stock State</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sku, inv in impact_analysis.inventory_balances.items() %}
+              <tr>
+                <td class="text-warning font-monospace">{{ sku }}</td>
+                <td class="text-white small">{{ inv.item_name }}</td>
+                <td class="text-end text-white font-monospace">{{ inv.quantity_on_hand }}</td>
+                <td class="text-end text-secondary font-monospace">{{ inv.reserved_quantity }}</td>
+                <td class="text-end font-monospace fw-bold {% if inv.available_quantity == 0 %}text-danger{% elif inv.is_low_stock %}text-warning{% else %}text-success{% endif %}">
+                  {{ inv.available_quantity }}
+                </td>
+                <td class="text-end text-secondary font-monospace">{{ inv.reorder_point }}</td>
+                <td>
+                  {% if inv.available_quantity == 0 %}
+                    <span class="badge bg-danger" style="font-size: 0.65rem;">Stockout</span>
+                  {% elif inv.is_low_stock %}
+                    <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">Low Buffer</span>
+                  {% else %}
+                    <span class="badge bg-success" style="font-size: 0.65rem;">Healthy</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Alternative Warehouses & Mitigations -->
+  <div class="col-12 col-lg-5">
+    <div class="control-card mb-4">
+      <div class="control-card-header d-flex justify-content-between align-items-center">
+        <h3 class="control-card-title text-white">
+          <i class="bi bi-arrow-left-right text-success"></i>Alternative Network Transfer Options
+        </h3>
+        <span class="badge bg-dark text-secondary" style="font-size: 0.68rem;">Cross-Dock Analysis</span>
+      </div>
+      <div class="control-card-body p-0">
+        {% if impact_analysis.alternative_warehouses %}
+        <div class="table-responsive">
+          <table class="table table-sm table-control align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Warehouse</th>
+                <th>SKU</th>
+                <th class="text-end">Available</th>
+                <th class="text-end">Surplus</th>
+                <th>Transferability</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for alt in impact_analysis.alternative_warehouses %}
+              <tr>
+                <td>
+                  <span class="text-info font-monospace fw-bold">{{ alt.warehouse_code }}</span>
+                  <div class="text-secondary" style="font-size: 0.68rem;">{{ alt.warehouse_location }}</div>
+                </td>
+                <td class="text-warning font-monospace small">{{ alt.sku }}</td>
+                <td class="text-end text-white font-monospace">{{ alt.available_quantity }}</td>
+                <td class="text-end font-monospace fw-bold {% if alt.surplus_available > 0 %}text-success{% else %}text-secondary{% endif %}">
+                  {{ alt.surplus_available }}
+                </td>
+                <td>
+                  {% if alt.can_transfer %}
+                    <span class="badge bg-success" style="font-size: 0.65rem;"><i class="bi bi-check-circle me-1"></i>Viable Transfer</span>
+                  {% else %}
+                    <span class="badge bg-secondary" style="font-size: 0.65rem;">Zero Surplus</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state p-4 text-center">
+          <i class="bi bi-slash-circle text-secondary fs-3 mb-2"></i>
+          <h6 class="text-white">No Alternative Network Stock</h6>
+          <p class="text-secondary small mb-0">No other warehouses currently hold inventory for the affected SKU.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Diagnostic Classification Card -->
+    <div class="control-card">
+      <div class="control-card-header">
+        <h3 class="control-card-title text-white">
+          <i class="bi bi-shield-check text-info"></i>Risk Engine Operational Protocol
+        </h3>
+      </div>
+      <div class="control-card-body small text-secondary">
+        <p class="mb-2">
+          &bull; <strong>Deterministic Ranking:</strong> Each customer order below is evaluated with the 4-component formula (Deadline 35%, Shortage 30%, Priority 20%, Recovery 15%).
+        </p>
+        <p class="mb-2">
+          &bull; <strong>Non-Destructive:</strong> Impact analysis is strictly read-only and computes real stock availability without modifying physical or reserved inventory.
+        </p>
+        <p class="mb-0">
+          &bull; <strong>SLA Escalation:</strong> Orders with Critical severity (&ge;80.00) require priority intervention or expedited replenishment authorization.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Section: Affected Customer Orders with Full Evidence Panel -->
+<div class="control-card">
+  <div class="control-card-header d-flex justify-content-between align-items-center">
+    <h3 class="control-card-title text-white">
+      <i class="bi bi-people-fill text-danger"></i>Affected Customer Orders &amp; Risk Evidence Panel ({{ order_risks|length }})
+    </h3>
+    <a href="{{ url_for('risk_queue.index', disruption_id=disruption.id) }}" class="btn btn-sm btn-outline-warning" style="font-size: 0.75rem;">
+      <i class="bi bi-sort-numeric-down me-1"></i> View in Risk Queue
+    </a>
+  </div>
+  <div class="control-card-body p-0">
+    {% if order_risks %}
+    <div class="table-responsive">
+      <table class="table table-control align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width: 45px;">Rank</th>
+            <th>Order #</th>
+            <th>Customer &amp; Tier</th>
+            <th>Priority</th>
+            <th>Delivery Deadline</th>
+            <th>SKU &amp; Qty</th>
+            <th style="min-width: 140px;">Risk Score</th>
+            <th>Severity</th>
+            <th>Order Status</th>
+            <th class="text-center">Evidence Breakdown</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in order_risks %}
+          <tr>
+            <td>
+              <span class="badge {% if r.severity == 'Critical' %}bg-danger{% elif r.severity == 'High' %}bg-warning text-dark{% else %}bg-secondary{% endif %} font-monospace fw-bold">
+                #{{ loop.index }}
+              </span>
+            </td>
+            <td>
+              <span class="text-white font-monospace fw-bold">{{ r.order_number }}</span>
+            </td>
+            <td>
+              <div class="text-white fw-semibold small">{{ r.customer_name }}</div>
+              <div>
+                {% if r.customer_tier == 'Platinum' %}
+                  <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">Platinum</span>
+                {% elif r.customer_tier == 'Gold' %}
+                  <span class="badge bg-info text-dark" style="font-size: 0.65rem;">Gold</span>
+                {% else %}
+                  <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ r.customer_tier or 'Standard' }}</span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              {% if r.order_priority == 'Critical' %}
+                <span class="badge bg-danger">Critical</span>
+              {% elif r.order_priority == 'High' %}
+                <span class="badge bg-warning text-dark">High</span>
+              {% else %}
+                <span class="badge bg-primary">{{ r.order_priority }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="text-white small font-monospace">{{ r.delivery_deadline[:10] if r.delivery_deadline else 'Unknown' }}</span>
+            </td>
+            <td>
+              <div class="text-warning font-monospace small fw-bold">{{ r.affected_sku }}</div>
+              <div class="text-secondary small">{{ r.required_quantity }} units required</div>
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span class="font-monospace fw-bold {% if r.severity == 'Critical' %}text-danger{% elif r.severity == 'High' %}text-warning{% else %}text-info{% endif %}" style="font-size: 0.88rem;">
+                  {{ "{:.2f}".format(r.final_risk_score) }}
+                </span>
+                <div class="progress flex-grow-1" style="height: 6px; background-color: var(--border-subtle); border-radius: 3px;">
+                  <div class="progress-bar {% if r.severity == 'Critical' %}bg-danger{% elif r.severity == 'High' %}bg-warning{% else %}bg-info{% endif %}"
+                       style="width: {{ r.final_risk_score }}%;">
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if r.severity == 'Critical' %}
+                <span class="badge bg-danger">Critical</span>
+              {% elif r.severity == 'High' %}
+                <span class="badge bg-warning text-dark">High</span>
+              {% else %}
+                <span class="badge bg-info text-dark">Medium</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge {% if r.order_status == 'At Risk' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size: 0.68rem;">
+                {{ r.order_status }}
+              </span>
+            </td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-info py-0 px-2" type="button" data-bs-toggle="collapse" data-bs-target="#orderEvidence{{ r.order_id }}" aria-expanded="false" aria-controls="orderEvidence{{ r.order_id }}">
+                <i class="bi bi-chevron-down me-1"></i>Evidence
+              </button>
+            </td>
+          </tr>
+
+          <!-- Expandable Evidence Accordion Row -->
+          <tr class="collapse" id="orderEvidence{{ r.order_id }}">
+            <td colspan="10" class="p-3 bg-black border-bottom border-secondary">
+              <div class="p-3 rounded bg-dark border border-secondary">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2" style="border-color: var(--border-subtle) !important;">
+                  <div>
+                    <span class="text-secondary small fw-bold text-uppercase" style="font-size: 0.72rem;">Evidence Supporting Risk Score:</span>
+                    <span class="text-white font-monospace fw-bold ms-2">{{ r.order_number }}</span>
+                  </div>
+                  <div>
+                    <span class="badge bg-dark border border-secondary text-info font-monospace">
+                      Formula: 0.35 &times; Deadline + 0.30 &times; Shortage + 0.20 &times; Priority + 0.15 &times; Recovery
+                    </span>
+                  </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                  <!-- Component 1 -->
+                  <div class="col-12 col-md-3">
+                    <div class="p-2 rounded bg-black border border-secondary h-100">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-white small fw-bold"><i class="bi bi-clock-history text-danger me-1"></i>Deadline (35%)</span>
+                        <span class="text-danger font-monospace small fw-bold">+{{ r.components.deadline_risk.contribution }} pts</span>
+                      </div>
+                      <div class="text-secondary" style="font-size: 0.72rem; line-height: 1.4;">
+                        {{ r.components.deadline_risk.evidence }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Component 2 -->
+                  <div class="col-12 col-md-3">
+                    <div class="p-2 rounded bg-black border border-secondary h-100">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-white small fw-bold"><i class="bi bi-boxes text-warning me-1"></i>Shortage (30%)</span>
+                        <span class="text-warning font-monospace small fw-bold">+{{ r.components.shortage_risk.contribution }} pts</span>
+                      </div>
+                      <div class="text-secondary" style="font-size: 0.72rem; line-height: 1.4;">
+                        {{ r.components.shortage_risk.evidence }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Component 3 -->
+                  <div class="col-12 col-md-3">
+                    <div class="p-2 rounded bg-black border border-secondary h-100">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-white small fw-bold"><i class="bi bi-star-fill text-info me-1"></i>Priority (20%)</span>
+                        <span class="text-info font-monospace small fw-bold">+{{ r.components.customer_priority.contribution }} pts</span>
+                      </div>
+                      <div class="text-secondary" style="font-size: 0.72rem; line-height: 1.4;">
+                        {{ r.components.customer_priority.evidence }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Component 4 -->
+                  <div class="col-12 col-md-3">
+                    <div class="p-2 rounded bg-black border border-secondary h-100">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-white small fw-bold"><i class="bi bi-shield-check text-success me-1"></i>Recovery (15%)</span>
+                        <span class="text-success font-monospace small fw-bold">+{{ r.components.recovery_difficulty.contribution }} pts</span>
+                      </div>
+                      <div class="text-secondary" style="font-size: 0.72rem; line-height: 1.4;">
+                        {{ r.components.recovery_difficulty.evidence }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="p-2 rounded bg-black border border-secondary" style="border-left: 3px solid var(--accent-teal) !important;">
+                  <div class="text-info small fw-bold mb-1"><i class="bi bi-lightbulb me-1"></i>Synthesis Explanation</div>
+                  <p class="text-white small mb-0" style="font-size: 0.78rem;">
+                    {{ r.explanation }}
+                  </p>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state p-4 text-center">
+      <p class="text-secondary mb-0">No customer orders are currently linked to this disruption.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

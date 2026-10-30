@@ -1,0 +1,468 @@
+{% extends "base.html" %}
+
+{% block title %}Ranked Order Risk Queue{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-sort-numeric-down text-warning me-2"></i>Ranked Customer Order Risk Queue
+    </h2>
+    <p class="text-secondary small mb-0">
+      Deterministic, multi-echelon risk ranking prioritising customer orders most vulnerable to active supply-chain disruptions.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('risk_queue.api_risk_queue', severity=current_severity, status=current_status, priority=current_priority, disruption_id=current_disruption_id, q=search_q) }}" target="_blank" class="btn btn-sm btn-outline-info">
+      <i class="bi bi-code-slash me-1"></i> JSON API
+    </a>
+    <a href="{{ url_for('logistics.disruptions') }}" class="btn btn-sm btn-outline-warning">
+      <i class="bi bi-exclamation-octagon me-1"></i> View Disruptions
+    </a>
+  </div>
+</div>
+
+<!-- KPI Summary Strip -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--danger);">
+      <div>
+        <div class="kpi-label">Critical Risk Orders</div>
+        <div class="kpi-value text-danger">{{ counts.critical }}</div>
+        <div class="kpi-subtext text-danger">Score 80.00 &ndash; 100.00</div>
+      </div>
+      <div class="kpi-icon-box icon-coral">
+        <i class="bi bi-exclamation-octagon-fill"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--control-gold);">
+      <div>
+        <div class="kpi-label">High Risk Orders</div>
+        <div class="kpi-value text-warning">{{ counts.high }}</div>
+        <div class="kpi-subtext text-warning">Score 60.00 &ndash; 79.99</div>
+      </div>
+      <div class="kpi-icon-box icon-gold">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--primary-accent);">
+      <div>
+        <div class="kpi-label">Medium Risk Orders</div>
+        <div class="kpi-value text-white">{{ counts.medium }}</div>
+        <div class="kpi-subtext text-secondary">Score 30.00 &ndash; 59.99</div>
+      </div>
+      <div class="kpi-icon-box icon-slate">
+        <i class="bi bi-clock-history"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--accent-teal);">
+      <div>
+        <div class="kpi-label">Total At-Risk Queue</div>
+        <div class="kpi-value text-white">{{ counts.total }}</div>
+        <div class="kpi-subtext text-info">Active Disruption Impacts</div>
+      </div>
+      <div class="kpi-icon-box icon-teal">
+        <i class="bi bi-list-ol"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Interactive Filters and Search Card -->
+<div class="control-card mb-4">
+  <div class="control-card-body p-3">
+    <form method="GET" action="{{ url_for('risk_queue.index') }}" class="row g-2 align-items-center">
+      <!-- Search -->
+      <div class="col-12 col-md-3">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-dark border-secondary text-secondary">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control bg-dark text-white border-secondary" name="q" value="{{ search_q }}" placeholder="Search Order ID, Customer, SKU...">
+        </div>
+      </div>
+
+      <!-- Severity Filter -->
+      <div class="col-6 col-md-2">
+        <select class="form-select form-select-sm bg-dark text-white border-secondary" name="severity" onchange="this.form.submit()">
+          <option value="all" {% if current_severity == 'all' %}selected{% endif %}>All Severities</option>
+          <option value="critical" {% if current_severity == 'critical' %}selected{% endif %}>Critical Only (80+)</option>
+          <option value="high" {% if current_severity == 'high' %}selected{% endif %}>High Only (60-79)</option>
+          <option value="medium" {% if current_severity == 'medium' %}selected{% endif %}>Medium Only (30-59)</option>
+          <option value="low" {% if current_severity == 'low' %}selected{% endif %}>Low Only (&lt;30)</option>
+        </select>
+      </div>
+
+      <!-- Priority Filter -->
+      <div class="col-6 col-md-2">
+        <select class="form-select form-select-sm bg-dark text-white border-secondary" name="priority" onchange="this.form.submit()">
+          <option value="all" {% if current_priority == 'all' %}selected{% endif %}>All Priorities</option>
+          <option value="critical" {% if current_priority == 'critical' %}selected{% endif %}>Critical Priority</option>
+          <option value="high" {% if current_priority == 'high' %}selected{% endif %}>High Priority</option>
+          <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>Medium Priority</option>
+          <option value="low" {% if current_priority == 'low' %}selected{% endif %}>Low Priority</option>
+        </select>
+      </div>
+
+      <!-- Source Disruption Filter -->
+      <div class="col-12 col-md-3">
+        <select class="form-select form-select-sm bg-dark text-white border-secondary" name="disruption_id" onchange="this.form.submit()">
+          <option value="" {% if not current_disruption_id %}selected{% endif %}>All Active Disruptions</option>
+          {% for d in active_disruptions %}
+          <option value="{{ d.id }}" {% if current_disruption_id == d.id %}selected{% endif %}>
+            {{ d.disruption_code }} &mdash; {{ d.title[:38] }}...
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-control-gold flex-grow-1">Filter</button>
+        <a href="{{ url_for('risk_queue.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset Filters">
+          <i class="bi bi-x-circle"></i>
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Risk Engine Formula Context Accordion -->
+<div class="accordion mb-4" id="formulaAccordion">
+  <div class="accordion-item bg-dark border-secondary">
+    <h2 class="accordion-header" id="formulaHeading">
+      <button class="accordion-button collapsed bg-dark text-white py-2" type="button" data-bs-toggle="collapse" data-bs-target="#formulaCollapse" aria-expanded="false" aria-controls="formulaCollapse" style="font-size: 0.82rem;">
+        <i class="bi bi-calculator text-warning me-2"></i>
+        <span>Deterministic Scoring Model &bull; Formula: <strong>Risk Score = 0.35 × Deadline + 0.30 × Shortage + 0.20 × Priority + 0.15 × Recovery</strong></span>
+      </button>
+    </h2>
+    <div id="formulaCollapse" class="accordion-collapse collapse" aria-labelledby="formulaHeading" data-bs-parent="#formulaAccordion">
+      <div class="accordion-body text-secondary small pt-2 pb-3" style="font-size: 0.78rem; line-height: 1.6;">
+        <div class="row g-3">
+          <div class="col-12 col-md-3">
+            <div class="text-white fw-bold mb-1"><i class="bi bi-clock-history text-danger me-1"></i>Deadline Risk (35%)</div>
+            <p class="mb-0">Evaluates remaining fulfillment hours against estimated disruption delay. Missing deadlines incur an authoritative baseline penalty.</p>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="text-white fw-bold mb-1"><i class="bi bi-boxes text-warning me-1"></i>Shortage Risk (30%)</div>
+            <p class="mb-0">Compares order demand against on-hand available stock (excluding reserved inventory) and checks for multi-order SKU competition.</p>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="text-white fw-bold mb-1"><i class="bi bi-star-fill text-info me-1"></i>Customer Priority (20%)</div>
+            <p class="mb-0">Authoritative commercial priority score combining order priority (Critical: 90, High: 70) and customer SLA tier (Platinum: +10, Gold: +5).</p>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="text-white fw-bold mb-1"><i class="bi bi-shield-check text-success me-1"></i>Recovery Difficulty (15%)</div>
+            <p class="mb-0">Quantifies availability of transfer surplus across secondary network hubs and compares supplier replenishment lead time to the delivery deadline.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ranked Risk Queue Table -->
+<div class="control-card">
+  <div class="control-card-header d-flex justify-content-between align-items-center">
+    <h3 class="control-card-title text-white">
+      <i class="bi bi-table text-warning"></i>Prioritised Order Risk Queue ({{ orders|length }} Orders)
+    </h3>
+    <span class="badge bg-dark text-secondary font-monospace" style="font-size: 0.7rem;">
+      Deterministic Sorting: Score DESC &bull; Deadline ASC &bull; Order ID ASC
+    </span>
+  </div>
+  <div class="table-responsive">
+    {% if orders %}
+    <table class="table table-control align-middle mb-0">
+      <thead>
+        <tr>
+          <th style="width: 50px;">Rank</th>
+          <th>Order #</th>
+          <th>Customer &amp; Tier</th>
+          <th>Priority</th>
+          <th>Delivery Deadline</th>
+          <th>Affected SKU</th>
+          <th class="text-end">Required</th>
+          <th class="text-end">Available</th>
+          <th class="text-end">Shortage</th>
+          <th>Est. Delay</th>
+          <th style="min-width: 140px;">Risk Score</th>
+          <th>Severity</th>
+          <th>Status</th>
+          <th>Source Disruption</th>
+          <th class="text-center">Evidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <!-- Rank -->
+          <td>
+            <span class="badge {% if o.rank == 1 %}bg-danger{% elif o.rank <= 3 %}bg-warning text-dark{% else %}bg-secondary{% endif %} font-monospace fw-bold">
+              #{{ o.rank }}
+            </span>
+          </td>
+
+          <!-- Order ID -->
+          <td>
+            <a href="{{ url_for('logistics.orders', q=o.order_number) }}" class="text-white font-monospace fw-bold text-decoration-none">
+              {{ o.order_number }}
+            </a>
+          </td>
+
+          <!-- Customer & Tier -->
+          <td>
+            <div class="text-white fw-semibold small">{{ o.customer_name }}</div>
+            <div>
+              {% if o.customer_tier == 'Platinum' %}
+                <span class="badge bg-warning text-dark" style="font-size: 0.65rem;"><i class="bi bi-star-fill me-1"></i>Platinum</span>
+              {% elif o.customer_tier == 'Gold' %}
+                <span class="badge bg-info text-dark" style="font-size: 0.65rem;">Gold</span>
+              {% else %}
+                <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ o.customer_tier or 'Standard' }}</span>
+              {% endif %}
+            </div>
+          </td>
+
+          <!-- Priority -->
+          <td>
+            {% if o.order_priority == 'Critical' %}
+              <span class="badge bg-danger" style="font-size: 0.7rem;">Critical</span>
+            {% elif o.order_priority == 'High' %}
+              <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">High</span>
+            {% else %}
+              <span class="badge bg-primary" style="font-size: 0.7rem;">{{ o.order_priority }}</span>
+            {% endif %}
+          </td>
+
+          <!-- Delivery Deadline -->
+          <td>
+            {% if o.delivery_deadline %}
+              <span class="text-white small font-monospace">{{ o.delivery_deadline[:10] }}</span>
+            {% else %}
+              <span class="badge bg-dark text-muted font-monospace" style="font-size: 0.68rem;">Unknown</span>
+            {% endif %}
+          </td>
+
+          <!-- Affected SKU -->
+          <td>
+            <span class="text-warning font-monospace small fw-bold">{{ o.affected_sku }}</span>
+          </td>
+
+          <!-- Required Qty -->
+          <td class="text-end text-white font-monospace small">
+            {{ o.required_quantity }}
+          </td>
+
+          <!-- Available Qty -->
+          <td class="text-end font-monospace small {% if o.available_quantity == 0 %}text-danger fw-bold{% else %}text-secondary{% endif %}">
+            {{ o.available_quantity }}
+          </td>
+
+          <!-- Shortage Qty -->
+          <td class="text-end font-monospace small">
+            {% if o.shortage_quantity > 0 %}
+              <span class="text-danger fw-bold">-{{ o.shortage_quantity }}</span>
+            {% else %}
+              <span class="text-success">&mdash;</span>
+            {% endif %}
+          </td>
+
+          <!-- Estimated Delay -->
+          <td>
+            {% if o.estimated_delay_hours > 0 %}
+              <span class="text-warning font-monospace small fw-bold">+{{ o.estimated_delay_hours }}h</span>
+            {% else %}
+              <span class="text-muted small">&mdash;</span>
+            {% endif %}
+          </td>
+
+          <!-- Numeric Risk Score with Meter -->
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <span class="font-monospace fw-bold {% if o.severity == 'Critical' %}text-danger{% elif o.severity == 'High' %}text-warning{% elif o.severity == 'Medium' %}text-info{% else %}text-success{% endif %}" style="font-size: 0.88rem;">
+                {{ "{:.2f}".format(o.final_risk_score) }}
+              </span>
+              <div class="progress flex-grow-1" style="height: 6px; background-color: var(--border-subtle); border-radius: 3px;">
+                <div class="progress-bar {% if o.severity == 'Critical' %}bg-danger{% elif o.severity == 'High' %}bg-warning{% elif o.severity == 'Medium' %}bg-info{% else %}bg-success{% endif %}"
+                     role="progressbar"
+                     style="width: {{ o.final_risk_score }}%;"
+                     aria-valuenow="{{ o.final_risk_score }}" aria-valuemin="0" aria-valuemax="100">
+                </div>
+              </div>
+            </div>
+          </td>
+
+          <!-- Severity Badge -->
+          <td>
+            {% if o.severity == 'Critical' %}
+              <span class="badge bg-danger">Critical</span>
+            {% elif o.severity == 'High' %}
+              <span class="badge bg-warning text-dark">High</span>
+            {% elif o.severity == 'Medium' %}
+              <span class="badge bg-info text-dark">Medium</span>
+            {% else %}
+              <span class="badge bg-success">Low</span>
+            {% endif %}
+          </td>
+
+          <!-- Order Status -->
+          <td>
+            <span class="badge {% if o.order_status == 'At Risk' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size: 0.68rem;">
+              {{ o.order_status }}
+            </span>
+          </td>
+
+          <!-- Source Disruption -->
+          <td>
+            <a href="{{ url_for('logistics.disruption_detail', disruption_id=o.disruption_id) }}" class="text-decoration-none font-monospace small text-info fw-bold" title="{{ o.disruption_title }}">
+              {{ o.disruption_code }}
+            </a>
+          </td>
+
+          <!-- Evidence Modal Trigger -->
+          <td class="text-center">
+            <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" data-bs-toggle="modal" data-bs-target="#evidenceModal{{ o.order_id }}" title="Inspect Risk Score Evidence">
+              <i class="bi bi-info-circle"></i>
+            </button>
+
+            <!-- Evidence Breakdown Modal -->
+            <div class="modal fade" id="evidenceModal{{ o.order_id }}" tabindex="-1" aria-labelledby="evidenceModalLabel{{ o.order_id }}" aria-hidden="true">
+              <div class="modal-dialog modal-lg modal-dialog-centered text-start">
+                <div class="modal-content bg-dark text-white border-secondary">
+                  <div class="modal-header border-secondary py-2">
+                    <h5 class="modal-title h6" id="evidenceModalLabel{{ o.order_id }}">
+                      <i class="bi bi-clipboard-data text-warning me-2"></i>
+                      Risk Score Breakdown: <span class="font-monospace text-info">{{ o.order_number }}</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body p-3">
+                    <div class="d-flex align-items-center justify-content-between p-3 rounded mb-3 bg-black" style="border: 1px solid var(--border-subtle);">
+                      <div>
+                        <div class="text-secondary small">Customer &bull; Tier</div>
+                        <div class="text-white fw-bold">{{ o.customer_name }} ({{ o.customer_tier or 'Standard' }})</div>
+                      </div>
+                      <div>
+                        <div class="text-secondary small">Primary Disruption</div>
+                        <div class="text-warning font-monospace fw-bold">{{ o.disruption_code }}</div>
+                      </div>
+                      <div class="text-end">
+                        <div class="text-secondary small">Overall Risk Score</div>
+                        <div class="font-monospace fw-bold fs-5 {% if o.severity == 'Critical' %}text-danger{% elif o.severity == 'High' %}text-warning{% else %}text-info{% endif %}">
+                          {{ "{:.2f}".format(o.final_risk_score) }} / 100
+                          <span class="badge {% if o.severity == 'Critical' %}bg-danger{% elif o.severity == 'High' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %} ms-1" style="font-size: 0.7rem;">{{ o.severity }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 4 Component Score Cards -->
+                    <div class="row g-2 mb-3">
+                      <!-- Component 1: Deadline Risk -->
+                      <div class="col-12 col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary h-100">
+                          <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-white small fw-bold"><i class="bi bi-clock-history text-danger me-1"></i>Deadline Risk (35%)</span>
+                            <span class="font-monospace small text-danger fw-bold">
+                              {{ o.components.deadline_risk.score }} &rarr; +{{ o.components.deadline_risk.contribution }} pts
+                            </span>
+                          </div>
+                          <p class="text-secondary small mb-0" style="font-size: 0.75rem; line-height: 1.4;">
+                            {{ o.components.deadline_risk.evidence }}
+                          </p>
+                        </div>
+                      </div>
+
+                      <!-- Component 2: Shortage Risk -->
+                      <div class="col-12 col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary h-100">
+                          <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-white small fw-bold"><i class="bi bi-boxes text-warning me-1"></i>Shortage Risk (30%)</span>
+                            <span class="font-monospace small text-warning fw-bold">
+                              {{ o.components.shortage_risk.score }} &rarr; +{{ o.components.shortage_risk.contribution }} pts
+                            </span>
+                          </div>
+                          <p class="text-secondary small mb-0" style="font-size: 0.75rem; line-height: 1.4;">
+                            {{ o.components.shortage_risk.evidence }}
+                          </p>
+                        </div>
+                      </div>
+
+                      <!-- Component 3: Customer Priority -->
+                      <div class="col-12 col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary h-100">
+                          <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-white small fw-bold"><i class="bi bi-star-fill text-info me-1"></i>Customer Priority (20%)</span>
+                            <span class="font-monospace small text-info fw-bold">
+                              {{ o.components.customer_priority.score }} &rarr; +{{ o.components.customer_priority.contribution }} pts
+                            </span>
+                          </div>
+                          <p class="text-secondary small mb-0" style="font-size: 0.75rem; line-height: 1.4;">
+                            {{ o.components.customer_priority.evidence }}
+                          </p>
+                        </div>
+                      </div>
+
+                      <!-- Component 4: Recovery Difficulty -->
+                      <div class="col-12 col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary h-100">
+                          <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-white small fw-bold"><i class="bi bi-shield-check text-success me-1"></i>Recovery Difficulty (15%)</span>
+                            <span class="font-monospace small text-success fw-bold">
+                              {{ o.components.recovery_difficulty.score }} &rarr; +{{ o.components.recovery_difficulty.contribution }} pts
+                            </span>
+                          </div>
+                          <p class="text-secondary small mb-0" style="font-size: 0.75rem; line-height: 1.4;">
+                            {{ o.components.recovery_difficulty.evidence }}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Concise Explanation -->
+                    <div class="p-2 rounded bg-dark border border-secondary" style="border-left: 3px solid var(--accent-teal) !important;">
+                      <div class="text-info small fw-bold mb-1"><i class="bi bi-lightbulb me-1"></i>Deterministic Explanation</div>
+                      <p class="text-white small mb-0" style="font-size: 0.78rem;">
+                        {{ o.explanation }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="modal-footer border-secondary py-1">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a href="{{ url_for('logistics.disruption_detail', disruption_id=o.disruption_id) }}" class="btn btn-sm btn-control-gold">
+                      Open Disruption Detail &rarr;
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state p-5 text-center">
+      <i class="bi bi-shield-check text-success display-4 mb-3"></i>
+      <h5 class="text-white">No Orders Matching Active Filter</h5>
+      <p class="text-secondary small mb-3">
+        There are currently no customer orders matching the specified severity, priority, or disruption filter.
+      </p>
+      <a href="{{ url_for('risk_queue.index') }}" class="btn btn-sm btn-outline-secondary">
+        Reset All Filters
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

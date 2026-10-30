@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Suppliers Directory{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-buildings text-warning me-2"></i>Global Suppliers Directory
+    </h2>
+    <p class="text-secondary small mb-0">
+      Multi-tier component vendors, lead-time metrics and expected supply arrival dates.
+    </p>
+  </div>
+  <div>
+    <span class="badge bg-dark text-secondary" style="border: 1px solid var(--border-subtle); padding: 0.45rem 0.75rem;">
+      Active Vendors: <span class="text-white fw-bold">{{ suppliers|length }}</span>
+    </span>
+  </div>
+</div>
+
+<div class="control-card">
+  <div class="control-card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+    <h3 class="control-card-title">
+      <i class="bi bi-truck text-info"></i>Approved Logistics Suppliers
+    </h3>
+    <form method="GET" action="{{ url_for('logistics.suppliers') }}" class="d-flex gap-2">
+      <input type="text" name="q" value="{{ search_q }}" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Search supplier or country..." style="width: 240px;">
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Search</button>
+      {% if search_q %}
+      <a href="{{ url_for('logistics.suppliers') }}" class="btn btn-sm btn-outline-danger">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+  <div class="table-responsive">
+    {% if suppliers %}
+    <table class="table table-control">
+      <thead>
+        <tr>
+          <th>Supplier Code</th>
+          <th>Vendor Name</th>
+          <th>Location</th>
+          <th>Reliability Score</th>
+          <th>Lead Time</th>
+          <th>Expected Supply Date</th>
+          <th>Active Shipments</th>
+          <th>Contact Email</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in suppliers %}
+        <tr>
+          <td class="text-white font-monospace fw-bold">{{ s.code }}</td>
+          <td class="text-white">{{ s.name }}</td>
+          <td class="text-secondary"><i class="bi bi-geo-alt me-1 text-danger"></i>{{ s.city }}, {{ s.country }}</td>
+          <td>
+            {% if s.reliability_score >= 0.95 %}
+              <span class="badge bg-success">{{ (s.reliability_score * 100)|round|int }}% (Tier 1)</span>
+            {% elif s.reliability_score >= 0.90 %}
+              <span class="badge bg-primary">{{ (s.reliability_score * 100)|round|int }}% (Tier 2)</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">{{ (s.reliability_score * 100)|round|int }}% (Watchlist)</span>
+            {% endif %}
+          </td>
+          <td class="text-white">{{ s.lead_time_days }} days</td>
+          <td class="text-secondary">
+            {{ s.expected_supply_date.strftime('%Y-%m-%d') if s.expected_supply_date else 'On Schedule' }}
+          </td>
+          <td>
+            <span class="badge bg-dark text-info border border-secondary">
+              {{ s.shipments.count() }} en route
+            </span>
+          </td>
+          <td class="text-secondary font-monospace small">{{ s.contact_email or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state p-5">
+      <i class="bi bi-buildings text-muted"></i>
+      <h4>No Suppliers Found</h4>
+      <p>No supplier records match your criteria. Seed demo data or import suppliers via CSV.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

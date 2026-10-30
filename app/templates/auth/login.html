@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — DisruptionIQ Control Tower</title>
+  <!-- Bootstrap 5 CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Custom Styling -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+</head>
+<body>
+
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="text-center mb-4">
+      <div class="brand-icon mx-auto mb-2" style="width: 48px; height: 48px; font-size: 1.4rem;">
+        <i class="bi bi-radar"></i>
+      </div>
+      <h2 class="h4 fw-bold text-white mb-1">DisruptionIQ</h2>
+      <p class="text-secondary small mb-0">Logistics Disruption Control Tower</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show mb-3" role="alert" style="font-size: 0.82rem; border-radius: 6px;">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+      <div class="mb-3">
+        <label for="identifier" class="form-label text-secondary small fw-semibold">Username or Email</label>
+        <div class="input-group">
+          <span class="input-group-text bg-dark border-secondary text-secondary" style="border-color: var(--border-subtle) !important;">
+            <i class="bi bi-person"></i>
+          </span>
+          <input type="text" class="form-control" id="identifier" name="identifier" required autofocus placeholder="admin or admin@disruptioniq.local">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="password" class="form-label text-secondary small fw-semibold">Password</label>
+        <div class="input-group">
+          <span class="input-group-text bg-dark border-secondary text-secondary" style="border-color: var(--border-subtle) !important;">
+            <i class="bi bi-lock"></i>
+          </span>
+          <input type="password" class="form-control" id="password" name="password" required placeholder="Enter password">
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center justify-content-between mb-4">
+        <div class="form-check">
+          <input class="form-check-input bg-dark border-secondary" type="checkbox" id="remember" name="remember" value="1">
+          <label class="form-check-label text-secondary small" for="remember">
+            Remember session
+          </label>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-control-gold mb-3">
+        <i class="bi bi-box-arrow-in-right me-1"></i> Access Control Tower
+      </button>
+    </form>
+
+    <!-- Quick Local Demo Credentials Reference -->
+    <div class="mt-4 pt-3 border-top" style="border-color: var(--border-subtle) !important;">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="text-secondary small fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+          Local Demo Credentials
+        </span>
+        <span class="badge bg-dark text-warning" style="font-size: 0.65rem;">Dev / Evaluation</span>
+      </div>
+      <div class="bg-dark p-2 rounded" style="font-size: 0.76rem; border: 1px solid var(--border-subtle); color: var(--text-secondary);">
+        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color: rgba(255,255,255,0.05) !important;">
+          <span>Admin:</span>
+          <span class="text-white font-monospace">admin</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color: rgba(255,255,255,0.05) !important;">
+          <span>Operations Analyst:</span>
+          <span class="text-white font-monospace">analyst</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color: rgba(255,255,255,0.05) !important;">
+          <span>Supply Chain Manager:</span>
+          <span class="text-white font-monospace">manager</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color: rgba(255,255,255,0.05) !important;">
+          <span>Warehouse Operator:</span>
+          <span class="text-white font-monospace">warehouse</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color: rgba(255,255,255,0.05) !important;">
+          <span>Procurement Approver:</span>
+          <span class="text-white font-monospace">approver</span>
+        </div>
+        <div class="d-flex justify-content-between pt-1">
+          <span>Password (All):</span>
+          <span class="text-warning font-monospace">DisruptionIQ@2026!</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

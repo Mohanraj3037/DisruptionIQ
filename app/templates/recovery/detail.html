@@ -1,0 +1,513 @@
+{% extends "base.html" %}
+
+{% block title %}{{ plan.plan_code }} — Recovery Plan Detail{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge bg-secondary-subtle text-secondary font-monospace">v{{ plan.version }}</span>
+      {% if plan.status == 'Draft' %}
+        <span class="badge bg-secondary">Draft</span>
+      {% elif plan.status == 'Pending Approval' %}
+        <span class="badge bg-warning text-dark">Pending Approval</span>
+      {% elif plan.status == 'Approved' %}
+        <span class="badge bg-success">Approved (Ready)</span>
+      {% elif plan.status == 'Executed' %}
+        <span class="badge bg-primary">Executed (Simulated)</span>
+      {% elif plan.status == 'Changes Requested' %}
+        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Changes Requested</span>
+      {% elif plan.status == 'Rejected' %}
+        <span class="badge bg-danger">Rejected</span>
+      {% else %}
+        <span class="badge bg-secondary">{{ plan.status }}</span>
+      {% endif %}
+      <h2 class="h4 fw-bold text-white mb-0">{{ plan.plan_code }}</h2>
+    </div>
+    <div class="text-secondary small">
+      {{ plan.title }} &bull; Strategy: <span class="text-info fw-semibold">{{ plan.strategy_type }}</span>
+    </div>
+  </div>
+
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('recovery.index') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i> All Plans
+    </a>
+
+    {% if plan.status in ['Draft', 'Changes Requested'] %}
+      <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#editPlanModal">
+        <i class="bi bi-pencil me-1"></i> Edit Plan
+      </button>
+      <form method="POST" action="{{ url_for('recovery.submit_approval', plan_id=plan.id) }}" class="d-inline">
+        <button type="submit" class="btn btn-sm btn-warning text-dark">
+          <i class="bi bi-send me-1"></i> Submit for Approval
+        </button>
+      </form>
+    {% elif plan.status == 'Pending Approval' and current_user.has_role('Procurement Approver', 'Supply Chain Manager', 'Administrator') %}
+      <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal">
+        <i class="bi bi-check-lg me-1"></i> Approve
+      </button>
+      <button type="button" class="btn btn-sm btn-warning text-dark" data-bs-toggle="modal" data-bs-target="#changesModal">
+        <i class="bi bi-pencil-square me-1"></i> Request Changes
+      </button>
+      <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+        <i class="bi bi-x-lg me-1"></i> Reject
+      </button>
+    {% elif plan.status == 'Approved' and current_user.has_role('Warehouse Operator', 'Supply Chain Manager', 'Administrator') %}
+      <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#editPlanModal" title="Modifying will invalidate approval">
+        <i class="bi bi-pencil me-1"></i> Modify Parameters
+      </button>
+      <a href="{{ url_for('recovery.confirm_execution', plan_id=plan.id) }}" class="btn btn-sm btn-primary">
+        <i class="bi bi-play-circle me-1"></i> Execute Simulated Recovery
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Plan Summary Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm p-3 h-100" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+      <div class="text-secondary small text-uppercase fw-semibold mb-1">Target SKU &amp; Quantity</div>
+      <div class="h4 text-white fw-bold mb-1">
+        {% if plan.sku %}
+          <code>{{ plan.sku }}</code>
+        {% else %}
+          &mdash;
+        {% endif %}
+      </div>
+      <div class="text-info small fw-medium">
+        {{ plan.quantity }} units proposed
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm p-3 h-100" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+      <div class="text-secondary small text-uppercase fw-semibold mb-1">Estimated Cost</div>
+      <div class="h4 text-warning fw-bold mb-1">${{ "%.2f"|format(plan.estimated_cost) }}</div>
+      <div class="text-secondary small">Simulated Operational Budget</div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm p-3 h-100" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+      <div class="text-secondary small text-uppercase fw-semibold mb-1">Est. Delay Saved</div>
+      <div class="h4 text-success fw-bold mb-1">{{ plan.estimated_delay_reduction_hours }} hrs</div>
+      <div class="text-secondary small">Delivery Schedule Protection</div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm p-3 h-100" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+      <div class="text-secondary small text-uppercase fw-semibold mb-1">Transfer Routing</div>
+      <div class="fw-semibold text-white mb-1">
+        {% if plan.source_warehouse and plan.destination_warehouse %}
+          {{ plan.source_warehouse.warehouse_code }} &rarr; {{ plan.destination_warehouse.warehouse_code }}
+        {% elif plan.source_location %}
+          {{ plan.source_location }} &rarr; {{ plan.destination_location }}
+        {% else %}
+          Internal Logistics
+        {% endif %}
+      </div>
+      <div class="text-secondary small">
+        {% if plan.source_warehouse %}
+          {{ plan.source_warehouse.name }}
+        {% else %}
+          Direct Carrier / Supplier
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Plan Context & Details -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <!-- Rationale and Description -->
+    <div class="card border-0 shadow-sm mb-4" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+      <div class="card-header bg-transparent py-3" style="border-bottom: 1px solid var(--border-color, #2a2f3e);">
+        <h5 class="card-title text-white mb-0 fs-6 fw-semibold">
+          <i class="bi bi-file-text text-info me-2"></i>Operational Rationale &amp; Strategy Description
+        </h5>
+      </div>
+      <div class="card-body">
+        <h6 class="text-light fs-6 fw-semibold mb-2">Recommendation Rationale</h6>
+        <p class="text-secondary small mb-3" style="white-space: pre-line;">{{ plan.rationale or 'No explicit rationale recorded for this plan.' }}</p>
+
+        <h6 class="text-light fs-6 fw-semibold mb-2">Detailed Operational Description</h6>
+        <p class="text-secondary small mb-0" style="white-space: pre-line;">{{ plan.description or 'Standard automated execution plan parameters.' }}</p>
+      </div>
+    </div>
+
+    <!-- Proposed Action Steps -->
+    <div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+      <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-3" style="border-bottom: 1px solid var(--border-color, #2a2f3e);">
+        <h5 class="card-title text-white mb-0 fs-6 fw-semibold">
+          <i class="bi bi-list-check text-warning me-2"></i>Proposed Sequential Recovery Actions
+        </h5>
+        <span class="badge bg-secondary-subtle text-secondary small">{{ plan.actions.count() }} Steps</span>
+      </div>
+      <div class="card-body p-0">
+        {% if actions %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-white" style="--bs-table-bg: transparent; --bs-table-hover-bg: rgba(255, 255, 255, 0.03);">
+              <thead>
+                <tr class="text-secondary text-uppercase small" style="border-bottom: 1px solid var(--border-color, #2a2f3e); font-size: 0.75rem;">
+                  <th class="ps-3 py-3" style="width: 50px;">Seq</th>
+                  <th>Action Type</th>
+                  <th>Description</th>
+                  <th>Assigned Role</th>
+                  <th>Est. Cost</th>
+                  <th class="text-end pe-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for act in actions %}
+                  <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <td class="ps-3 py-3 fw-bold text-info">#{{ act.action_sequence }}</td>
+                    <td>
+                      <span class="badge bg-dark border border-secondary text-light">{{ act.action_type }}</span>
+                    </td>
+                    <td class="small text-light">{{ act.description }}</td>
+                    <td class="small text-secondary">{{ act.assigned_to_role or 'System' }}</td>
+                    <td class="small text-warning">${{ "%.2f"|format(act.cost) }}</td>
+                    <td class="text-end pe-3">
+                      {% if act.status == 'Completed' %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">Completed</span>
+                      {% elif act.status == 'Failed' %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Failed</span>
+                      {% else %}
+                        <span class="badge bg-secondary">{{ act.status }}</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-center py-4 text-secondary small">
+            No specific action items attached to this recovery plan.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <!-- Governance & Status Card -->
+    <div class="card border-0 shadow-sm mb-4" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+      <div class="card-header bg-transparent py-3" style="border-bottom: 1px solid var(--border-color, #2a2f3e);">
+        <h5 class="card-title text-white mb-0 fs-6 fw-semibold">
+          <i class="bi bi-shield-lock text-success me-2"></i>Governance &amp; Approval State
+        </h5>
+      </div>
+      <div class="card-body">
+        <ul class="list-unstyled mb-0 small">
+          <li class="d-flex justify-content-between py-2 border-bottom border-secondary border-opacity-25">
+            <span class="text-secondary">Current Status</span>
+            <span class="fw-semibold text-white">{{ plan.status }}</span>
+          </li>
+          <li class="d-flex justify-content-between py-2 border-bottom border-secondary border-opacity-25">
+            <span class="text-secondary">Plan Version</span>
+            <span class="fw-semibold text-info">v{{ plan.version }}</span>
+          </li>
+          <li class="d-flex justify-content-between py-2 border-bottom border-secondary border-opacity-25">
+            <span class="text-secondary">Approved Version</span>
+            <span class="fw-semibold text-white">
+              {% if plan.approval_version %}
+                v{{ plan.approval_version }}
+                {% if plan.approval_version == plan.version %}
+                  <span class="badge bg-success-subtle text-success ms-1">Valid</span>
+                {% else %}
+                  <span class="badge bg-danger-subtle text-danger ms-1">Outdated</span>
+                {% endif %}
+              {% else %}
+                &mdash;
+              {% endif %}
+            </span>
+          </li>
+          <li class="d-flex justify-content-between py-2 border-bottom border-secondary border-opacity-25">
+            <span class="text-secondary">Created By</span>
+            <span class="text-light">{{ plan.created_by.full_name or plan.created_by.username if plan.created_by else 'System Engine' }}</span>
+          </li>
+          <li class="d-flex justify-content-between py-2 border-bottom border-secondary border-opacity-25">
+            <span class="text-secondary">Creation Date</span>
+            <span class="text-secondary">{{ plan.created_at.strftime('%Y-%m-%d %H:%M') if plan.created_at else '&mdash;' }}</span>
+          </li>
+          <li class="d-flex justify-content-between py-2 border-bottom border-secondary border-opacity-25">
+            <span class="text-secondary">Related Disruption</span>
+            {% if plan.disruption %}
+              <a href="{{ url_for('logistics.disruption_detail', disruption_id=plan.disruption.id) }}" class="text-info text-decoration-none">
+                {{ plan.disruption.disruption_code }}
+              </a>
+            {% else %}
+              <span class="text-secondary">&mdash;</span>
+            {% endif %}
+          </li>
+          <li class="d-flex justify-content-between py-2">
+            <span class="text-secondary">Target Order</span>
+            {% if plan.customer_order %}
+              <a href="{{ url_for('logistics.order_detail', order_id=plan.customer_order.id) }}" class="text-info text-decoration-none">
+                {{ plan.customer_order.order_number }}
+              </a>
+            {% else %}
+              <span class="text-secondary">Multi-Order / Buffer</span>
+            {% endif %}
+          </li>
+        </ul>
+
+        {% if plan.status == 'Executed' %}
+          <div class="mt-3 p-3 rounded" style="background-color: rgba(13, 110, 253, 0.1); border: 1px solid rgba(13, 110, 253, 0.2);">
+            <div class="fw-semibold text-primary mb-1 small">
+              <i class="bi bi-check-circle-fill me-1"></i> Simulated Execution Record
+            </div>
+            <div class="small text-secondary mb-1">
+              Executed by: <span class="text-light">{{ plan.executed_by.username if plan.executed_by else 'System' }}</span>
+            </div>
+            <div class="small text-secondary mb-1">
+              Timestamp: <span class="text-light">{{ plan.executed_at.strftime('%Y-%m-%d %H:%M:%S UTC') if plan.executed_at else '&mdash;' }}</span>
+            </div>
+            <div class="small text-secondary font-monospace" style="word-break: break-all;">
+              Key: {{ plan.execution_idempotency_key or '&mdash;' }}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Approvals Log -->
+    <div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+      <div class="card-header bg-transparent py-3" style="border-bottom: 1px solid var(--border-color, #2a2f3e);">
+        <h5 class="card-title text-white mb-0 fs-6 fw-semibold">
+          <i class="bi bi-clipboard-check text-info me-2"></i>Approvals History
+        </h5>
+      </div>
+      <div class="card-body p-0">
+        {% if approvals %}
+          <div class="list-group list-group-flush" style="background: transparent;">
+            {% for a in approvals %}
+              <div class="list-group-item bg-transparent text-white px-3 py-2 border-bottom border-secondary border-opacity-25">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="fw-semibold small">
+                    {% if a.status == 'Approved' %}
+                      <span class="badge bg-success-subtle text-success">Approved</span>
+                    {% elif a.status == 'Rejected' %}
+                      <span class="badge bg-danger-subtle text-danger">Rejected</span>
+                    {% elif a.status == 'Changes Requested' %}
+                      <span class="badge bg-warning-subtle text-warning">Changes Req.</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Pending</span>
+                    {% endif %}
+                  </span>
+                  <span class="text-secondary small">{{ a.requested_at.strftime('%m-%d %H:%M') if a.requested_at else '' }}</span>
+                </div>
+                <div class="small text-light">
+                  Requester: {{ a.requester.username if a.requester else 'Unknown' }}
+                </div>
+                {% if a.approver %}
+                  <div class="small text-secondary">
+                    Approver: {{ a.approver.username }} ({{ a.approver.role }})
+                  </div>
+                {% endif %}
+                {% if a.notes %}
+                  <div class="small text-info fst-italic mt-1 bg-dark p-2 rounded">
+                    &ldquo;{{ a.notes }}&rdquo;
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-3 text-secondary small">
+            No approval requests recorded yet.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Plan Audit History -->
+    <div class="card border-0 shadow-sm mt-4" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+      <div class="card-header bg-transparent py-3" style="border-bottom: 1px solid var(--border-color, #2a2f3e);">
+        <h5 class="card-title text-white mb-0 fs-6 fw-semibold">
+          <i class="bi bi-clock-history text-secondary me-2"></i>Audit Trail
+        </h5>
+      </div>
+      <div class="card-body p-0">
+        {% if audit_trail %}
+          <div class="list-group list-group-flush" style="background: transparent;">
+            {% for log in audit_trail %}
+              <div class="list-group-item bg-transparent text-white px-3 py-2 border-bottom border-secondary border-opacity-25">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="badge bg-secondary-subtle text-secondary small">{{ log.action }}</span>
+                  <span class="text-secondary small" style="font-size: 0.72rem;">{{ log.timestamp.strftime('%m-%d %H:%M') if log.timestamp else '' }}</span>
+                </div>
+                <div class="small text-light">{{ log.user.username if log.user else 'System' }}: {{ log.description }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-3 text-secondary small">
+            No audit log entries found for this plan.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Plan Edit Modal -->
+<div class="modal fade" id="editPlanModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content text-white" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e);">
+      <form method="POST" action="{{ url_for('recovery.edit_plan', plan_id=plan.id) }}">
+        <div class="modal-header border-bottom" style="border-color: var(--border-color, #2a2f3e) !important;">
+          <h6 class="modal-title fw-bold text-info">
+            <i class="bi bi-pencil me-1"></i> Edit Recovery Plan Parameters (v{{ plan.version }})
+          </h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          {% if plan.status == 'Approved' %}
+            <div class="alert alert-warning small mb-3">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>
+              <strong>Warning:</strong> Modifying an already approved plan will automatically reset its approval and increment the plan version. A fresh approval will be required before execution.
+            </div>
+          {% endif %}
+
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Plan Title</label>
+            <input type="text" name="title" value="{{ plan.title }}" class="form-control form-control-sm bg-dark text-white border-secondary" required>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label small text-secondary">Transfer / Alloc Quantity</label>
+              <input type="number" name="quantity" value="{{ plan.quantity }}" min="1" class="form-control form-control-sm bg-dark text-white border-secondary" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small text-secondary">Estimated Cost ($)</label>
+              <input type="number" step="0.01" name="estimated_cost" value="{{ plan.estimated_cost }}" min="0" class="form-control form-control-sm bg-dark text-white border-secondary" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small text-secondary">Est. Delay Saved (Hours)</label>
+              <input type="number" name="estimated_delay_reduction_hours" value="{{ plan.estimated_delay_reduction_hours }}" min="0" class="form-control form-control-sm bg-dark text-white border-secondary" required>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Operational Rationale</label>
+            <textarea name="rationale" class="form-control form-control-sm bg-dark text-white border-secondary" rows="3">{{ plan.rationale or '' }}</textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Action Description</label>
+            <textarea name="description" class="form-control form-control-sm bg-dark text-white border-secondary" rows="3">{{ plan.description or '' }}</textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-top" style="border-color: var(--border-color, #2a2f3e) !important;">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-info">
+            <i class="bi bi-save me-1"></i> Save Plan Modifications
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Approve Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-white" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e);">
+      <form method="POST" action="{{ url_for('recovery.approval_decision', plan_id=plan.id) }}">
+        <input type="hidden" name="decision" value="Approved">
+        <input type="hidden" name="return_to" value="detail">
+        <div class="modal-header border-bottom" style="border-color: var(--border-color, #2a2f3e) !important;">
+          <h6 class="modal-title fw-bold text-success">
+            <i class="bi bi-check-circle me-1"></i> Approve Recovery Plan {{ plan.plan_code }}
+          </h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-secondary mb-3">
+            By approving this plan, you authorise simulated execution readiness.
+          </p>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Approval Comments / Note (Optional)</label>
+            <textarea name="comments" class="form-control form-control-sm bg-dark text-white border-secondary" rows="3" placeholder="e.g., Financial budget and route verified."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-top" style="border-color: var(--border-color, #2a2f3e) !important;">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-success">
+            <i class="bi bi-check-lg me-1"></i> Confirm Approval
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Request Changes Modal -->
+<div class="modal fade" id="changesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-white" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e);">
+      <form method="POST" action="{{ url_for('recovery.approval_decision', plan_id=plan.id) }}">
+        <input type="hidden" name="decision" value="Changes Requested">
+        <input type="hidden" name="return_to" value="detail">
+        <div class="modal-header border-bottom" style="border-color: var(--border-color, #2a2f3e) !important;">
+          <h6 class="modal-title fw-bold text-warning">
+            <i class="bi bi-pencil-square me-1"></i> Request Plan Modifications
+          </h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small text-secondary fw-semibold">Modification Requirements (Mandatory) <span class="text-danger">*</span></label>
+            <textarea name="comments" required class="form-control form-control-sm bg-dark text-white border-secondary" rows="3" placeholder="Explain what changes are needed before approval."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-top" style="border-color: var(--border-color, #2a2f3e) !important;">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-warning text-dark">
+            <i class="bi bi-send me-1"></i> Submit Request
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-white" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e);">
+      <form method="POST" action="{{ url_for('recovery.approval_decision', plan_id=plan.id) }}">
+        <input type="hidden" name="decision" value="Rejected">
+        <input type="hidden" name="return_to" value="detail">
+        <div class="modal-header border-bottom" style="border-color: var(--border-color, #2a2f3e) !important;">
+          <h6 class="modal-title fw-bold text-danger">
+            <i class="bi bi-x-circle me-1"></i> Reject Recovery Plan
+          </h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small text-secondary fw-semibold">Rejection Justification (Mandatory) <span class="text-danger">*</span></label>
+            <textarea name="comments" required class="form-control form-control-sm bg-dark text-white border-secondary" rows="3" placeholder="Explain reason for rejection."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-top" style="border-color: var(--border-color, #2a2f3e) !important;">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-danger">
+            <i class="bi bi-x-lg me-1"></i> Reject Plan
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

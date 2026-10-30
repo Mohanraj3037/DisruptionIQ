@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Compare Recovery Scenarios &mdash; {{ disruption.disruption_code }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <a href="{{ url_for('recovery.index') }}" class="text-secondary small text-decoration-none">
+        <i class="bi bi-arrow-left me-1"></i>Back to Recovery Plans
+      </a>
+      <span class="text-muted small">&bull;</span>
+      <span class="text-warning small font-monospace">{{ disruption.disruption_code }}</span>
+    </div>
+    <h2 class="h4 fw-bold text-white mb-0">
+      Multi-Scenario Recovery Comparison &bull; {{ disruption.title }}
+    </h2>
+    <p class="text-secondary small mb-0 mt-1">
+      Deterministic comparison of feasible mitigation strategies ranked by risk reduction, recovery lead time, and cost efficiency.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('logistics.disruption_detail', disruption_id=disruption.id) }}" class="btn btn-sm btn-outline-info">
+      <i class="bi bi-diagram-3 me-1"></i> Disruption Impact Chain
+    </a>
+  </div>
+</div>
+
+<!-- Disruption Diagnostic Summary -->
+<div class="control-card mb-4" style="border-left: 4px solid var(--danger);">
+  <div class="control-card-body p-3">
+    <div class="row g-3 align-items-center">
+      <div class="col-6 col-md-3">
+        <div class="text-secondary small">Disruption Code</div>
+        <div class="text-white font-monospace fw-bold">{{ disruption.disruption_code }}</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="text-secondary small">Shortage Category</div>
+        <div>
+          {% if disruption.shortage_category == 'Confirmed Shortage' %}
+            <span class="badge bg-danger">Confirmed Shortage</span>
+          {% elif disruption.shortage_category == 'Potential Shortage' %}
+            <span class="badge bg-warning text-dark">Potential Shortage</span>
+          {% else %}
+            <span class="badge bg-secondary">Transit Delay</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="text-secondary small">Transit Delay</div>
+        <div class="text-warning font-monospace fw-bold">+{{ disruption.delay_hours }} Hours</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="text-secondary small">SLA Exposure</div>
+        <div class="text-danger font-monospace fw-bold">{{ disruption.affected_orders.count() }} Customer Orders</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ranking Protocol Context -->
+<div class="alert alert-dark border-secondary small text-secondary d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <i class="bi bi-info-circle-fill text-info me-2"></i>
+    <strong>Deterministic Ranking Method:</strong> Options are evaluated using a weighted multi-criteria model:
+    <span class="text-white font-monospace">Score = 35% Risk Reduction + 30% Delay Recovered + 20% Cost Efficiency + 15% Feasibility</span>.
+  </div>
+  <span class="badge bg-dark text-warning border border-secondary font-monospace">Rank #1 = Primary Recommendation</span>
+</div>
+
+<!-- Candidate Options Side-by-Side Comparison Grid -->
+<div class="row g-3 mb-4">
+  {% for opt in candidates %}
+  <div class="col-12 col-lg-6 col-xl-4">
+    <div class="control-card h-100 d-flex flex-column" style="border-top: 3px solid {% if opt.rank == 1 %}var(--success){% elif opt.rank == 2 %}var(--control-gold){% else %}var(--border-subtle){% endif %};">
+      <div class="control-card-header d-flex justify-content-between align-items-start pb-2">
+        <div>
+          <span class="badge {% if opt.rank == 1 %}bg-success{% elif opt.rank == 2 %}bg-warning text-dark{% else %}bg-secondary{% endif %} mb-1">
+            Rank #{{ opt.rank }} &bull; {{ opt.badge }}
+          </span>
+          <h4 class="h6 text-white fw-bold mb-0">{{ opt.title }}</h4>
+        </div>
+        <span class="badge bg-dark text-info font-monospace" style="font-size: 0.72rem;">
+          {{ opt.recommendation_score }} pts
+        </span>
+      </div>
+
+      <div class="control-card-body p-3 flex-grow-1 d-flex flex-column">
+        <!-- Key Metrics Strip -->
+        <div class="row g-2 mb-3 text-center">
+          <div class="col-4">
+            <div class="p-2 rounded bg-dark border border-secondary">
+              <div class="text-secondary" style="font-size: 0.68rem;">EST. COST</div>
+              <div class="text-white font-monospace fw-bold small">${{ "{:,.0f}".format(opt.estimated_cost) }}</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 rounded bg-dark border border-secondary">
+              <div class="text-secondary" style="font-size: 0.68rem;">DELAY SAVED</div>
+              <div class="text-success font-monospace fw-bold small">-{{ opt.estimated_delay_reduction_hours }}h</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 rounded bg-dark border border-secondary">
+              <div class="text-secondary" style="font-size: 0.68rem;">FEASIBILITY</div>
+              <div>
+                {% if opt.feasibility == 'Feasible' %}
+                  <span class="badge bg-success" style="font-size: 0.62rem;">Feasible</span>
+                {% elif opt.feasibility == 'Constrained' %}
+                  <span class="badge bg-warning text-dark" style="font-size: 0.62rem;">Constrained</span>
+                {% else %}
+                  <span class="badge bg-danger" style="font-size: 0.62rem;">Infeasible</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Details -->
+        <div class="small mb-3" style="font-size: 0.78rem; line-height: 1.5;">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-secondary">Strategy Type:</span>
+            <span class="text-warning font-monospace">{{ opt.strategy_type }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-secondary">Target SKU &amp; Qty:</span>
+            <span class="text-white font-monospace fw-bold">{{ opt.sku }} &bull; {{ opt.quantity }} units</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-secondary">Source Origin:</span>
+            <span class="text-white">{{ opt.source_location }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-secondary">Destination Hub:</span>
+            <span class="text-white">{{ opt.destination_location }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-secondary">Estimated Duration:</span>
+            <span class="text-white font-monospace">~{{ opt.estimated_duration_hours }} hours</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-secondary">Expected Risk Impact:</span>
+            <span class="text-success font-monospace fw-bold">-{{ opt.expected_risk_reduction_pts }} pts</span>
+          </div>
+        </div>
+
+        <!-- Inventory Impact Card -->
+        <div class="p-2 rounded bg-dark border border-secondary mb-3 small" style="font-size: 0.72rem;">
+          <div class="text-secondary fw-bold text-uppercase mb-1" style="font-size: 0.65rem;">Inventory Impact Projection</div>
+          {% if opt.strategy_type == 'Inter-Warehouse Stock Transfer' %}
+            <div>Source Available: <span class="text-white">{{ opt.inventory_impact.source_current_available }}</span> &rarr; <span class="text-warning font-monospace fw-bold">{{ opt.inventory_impact.source_projected_available }}</span> (Safety Stock: {% if opt.inventory_impact.reorder_point_protected %}<span class="text-success">Protected</span>{% else %}<span class="text-danger">Breached</span>{% endif %})</div>
+            <div>Destination Available: <span class="text-white">{{ opt.inventory_impact.destination_current_available }}</span> &rarr; <span class="text-success font-monospace fw-bold">{{ opt.inventory_impact.destination_projected_available }}</span></div>
+          {% elif opt.strategy_type == 'Alternative Supplier' %}
+            <div>On-hand stock: <span class="text-white">{{ opt.inventory_impact.destination_current_available }}</span> (Unchanged until simulated receipt)</div>
+            <div class="text-info">Inbound PO dispatch: +{{ opt.quantity }} units</div>
+          {% else %}
+            <div>Fulfillment queue: <span class="text-info">{{ opt.inventory_impact.destination_projected_available }}</span> units allocated</div>
+          {% endif %}
+        </div>
+
+        <!-- Rationale -->
+        <div class="p-2 rounded bg-dark border border-secondary mb-3" style="border-left: 3px solid var(--accent-teal) !important;">
+          <div class="text-info fw-bold small mb-1" style="font-size: 0.72rem;"><i class="bi bi-lightbulb me-1"></i>Operational Rationale</div>
+          <p class="text-white small mb-0" style="font-size: 0.75rem; line-height: 1.4;">
+            {{ opt.rationale }}
+          </p>
+        </div>
+
+        <!-- Assumptions -->
+        <div class="text-secondary small mb-3" style="font-size: 0.7rem;">
+          <strong>Assumptions:</strong> {{ opt.assumptions }}
+        </div>
+
+        <!-- Proposed Action Steps -->
+        <div class="mb-3">
+          <div class="text-secondary small fw-bold mb-1" style="font-size: 0.7rem;">PROPOSED ACTION DISPATCH</div>
+          <ol class="ps-3 mb-0 small text-secondary" style="font-size: 0.72rem;">
+            {% for act in opt.proposed_actions %}
+            <li>
+              <span class="text-white">{{ act.description }}</span>
+              <span class="badge bg-dark text-secondary border border-secondary ms-1" style="font-size: 0.6rem;">{{ act.role }}</span>
+            </li>
+            {% endfor %}
+          </ol>
+        </div>
+
+        <!-- Selection Button Form -->
+        <div class="mt-auto pt-2">
+          <form method="POST" action="{{ url_for('recovery.create_from_candidate') }}">
+            <input type="hidden" name="disruption_id" value="{{ disruption.id }}">
+            <input type="hidden" name="option_id" value="{{ opt.option_id }}">
+            <button type="submit" class="btn btn-sm {% if opt.rank == 1 %}btn-control-gold{% else %}btn-outline-warning{% endif %} w-100">
+              <i class="bi bi-file-earmark-plus me-1"></i> Select &amp; Create Formal Plan &rarr;
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

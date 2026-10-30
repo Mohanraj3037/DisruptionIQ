@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+
+{% block title %}Control Tower Overview{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-radar text-warning me-2"></i>Logistics Control Tower &bull; Risk Engine
+    </h2>
+    <p class="text-secondary small mb-0">
+      Real-time deterministic disruption monitoring, order risk scoring, and multi-echelon impact analysis.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('risk_queue.index') }}" class="btn btn-sm btn-control-gold">
+      <i class="bi bi-sort-numeric-down me-1"></i> Open Risk Queue ({{ metrics.affected_orders }})
+    </a>
+    <span class="badge" style="background-color: var(--bg-slate-light); border: 1px solid var(--border-subtle); color: var(--text-secondary); padding: 0.45rem 0.75rem;">
+      <i class="bi bi-database me-1 text-info"></i> SQLite: disruptioniq.db
+    </span>
+  </div>
+</div>
+
+<!-- KPI Metric Cards Row -->
+<div class="row g-3 mb-4">
+  <!-- KPI 1: Active Disruptions -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--danger);">
+      <div>
+        <div class="kpi-label">Active Disruptions</div>
+        <div class="kpi-value text-white">{{ metrics.active_disruptions }}</div>
+        <div class="kpi-subtext">
+          {% if metrics.active_disruptions > 0 %}
+            <span class="text-danger fw-bold">{{ metrics.confirmed_shortages }} confirmed</span> &bull; 
+            <span class="text-warning">{{ metrics.potential_shortages }} potential</span>
+          {% else %}
+            <span class="text-success"><i class="bi bi-check-circle"></i> Channels clear</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="kpi-icon-box icon-coral">
+        <i class="bi bi-exclamation-octagon-fill"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI 2: Critical & High Risk Orders -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--control-gold);">
+      <div>
+        <div class="kpi-label">Critical &amp; High Risk Orders</div>
+        <div class="kpi-value text-warning">
+          {{ metrics.critical_high_risk_orders }}
+          <span class="text-secondary small font-monospace" style="font-size: 0.75rem;">/ {{ metrics.affected_orders }} total</span>
+        </div>
+        <div class="kpi-subtext">
+          <span class="text-danger fw-bold">{{ metrics.critical_orders }} Critical</span> &bull; 
+          <span class="text-warning">{{ metrics.high_orders }} High risk</span>
+        </div>
+      </div>
+      <div class="kpi-icon-box icon-gold">
+        <i class="bi bi-shield-exclamation"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI 3: Delayed Shipments -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--primary-accent);">
+      <div>
+        <div class="kpi-label">Delayed Inbound Shipments</div>
+        <div class="kpi-value text-white">{{ metrics.delayed_shipments }}</div>
+        <div class="kpi-subtext">
+          {% if metrics.delayed_shipments > 0 %}
+            <span class="text-warning"><i class="bi bi-clock-history"></i> Inbound transit deviations</span>
+          {% else %}
+            <span class="text-muted"><i class="bi bi-check2"></i> Zero transit delays</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="kpi-icon-box icon-slate">
+        <i class="bi bi-truck"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI 4: Affected Customer Orders -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--accent-teal);">
+      <div>
+        <div class="kpi-label">Total Affected Orders</div>
+        <div class="kpi-value text-danger">{{ metrics.affected_orders }}</div>
+        <div class="kpi-subtext">
+          {% if metrics.affected_orders > 0 %}
+            <span class="text-danger"><i class="bi bi-exclamation-circle-fill"></i> Delivery SLA at risk</span>
+          {% else %}
+            <span class="text-success"><i class="bi bi-check-circle-fill"></i> All commitments safe</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="kpi-icon-box icon-teal">
+        <i class="bi bi-people-fill"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Phase 4: Recovery Planning & Governance KPI Row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--control-gold);">
+      <div>
+        <div class="kpi-label">Plans Awaiting Approval</div>
+        <div class="kpi-value text-warning">{{ metrics.pending_recovery_plans }}</div>
+        <div class="kpi-subtext">
+          <a href="{{ url_for('recovery.approvals') }}" class="text-warning text-decoration-none">
+            <i class="bi bi-arrow-right-circle me-1"></i> Governance Queue
+          </a>
+        </div>
+      </div>
+      <div class="kpi-icon-box icon-gold">
+        <i class="bi bi-hourglass-split"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--success);">
+      <div>
+        <div class="kpi-label">Approved (Execution Ready)</div>
+        <div class="kpi-value text-success">{{ metrics.approved_recovery_plans }}</div>
+        <div class="kpi-subtext">
+          <a href="{{ url_for('recovery.index', status='Approved') }}" class="text-success text-decoration-none">
+            <i class="bi bi-check-circle me-1"></i> Ready for Simulation
+          </a>
+        </div>
+      </div>
+      <div class="kpi-icon-box icon-teal">
+        <i class="bi bi-play-circle"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--info);">
+      <div>
+        <div class="kpi-label">Simulated Executions</div>
+        <div class="kpi-value text-info">{{ metrics.executed_recovery_plans }}</div>
+        <div class="kpi-subtext">
+          <a href="{{ url_for('recovery.index', status='Executed') }}" class="text-info text-decoration-none">
+            <i class="bi bi-clock-history me-1"></i> View Executed Plans
+          </a>
+        </div>
+      </div>
+      <div class="kpi-icon-box icon-slate">
+        <i class="bi bi-check2-all"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--border-subtle);">
+      <div>
+        <div class="kpi-label">Active Recovery Budget</div>
+        <div class="kpi-value text-white">${{ "%.2f"|format(metrics.active_recovery_cost) }}</div>
+        <div class="kpi-subtext text-secondary">
+          Estimated mitigation spend
+        </div>
+      </div>
+      <div class="kpi-icon-box icon-slate">
+        <i class="bi bi-cash-coin"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Visualisation Charts Row (3 Responsive Cards) -->
+<div class="row g-3 mb-4">
+  <!-- Chart 1: Disruptions by Severity -->
+  <div class="col-12 col-lg-4">
+    <div class="control-card h-100">
+      <div class="control-card-header d-flex justify-content-between align-items-center">
+        <h3 class="control-card-title text-white">
+          <i class="bi bi-pie-chart text-warning"></i>Disruptions by Severity
+        </h3>
+        <span class="badge bg-dark text-secondary" style="font-size: 0.68rem;">Live Disruption Log</span>
+      </div>
+      <div class="control-card-body d-flex flex-column justify-content-center">
+        <div style="height: 220px; position: relative;">
+          <canvas id="severityChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 2: Order Risk Severity Distribution -->
+  <div class="col-12 col-lg-4">
+    <div class="control-card h-100">
+      <div class="control-card-header d-flex justify-content-between align-items-center">
+        <h3 class="control-card-title text-white">
+          <i class="bi bi-speedometer text-danger"></i>Order Risk Distribution
+        </h3>
+        <span class="badge bg-dark text-info" style="font-size: 0.68rem;">Deterministic Engine</span>
+      </div>
+      <div class="control-card-body d-flex flex-column justify-content-center">
+        <div style="height: 220px; position: relative;">
+          <canvas id="riskDistributionChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 3: Shipments by Status -->
+  <div class="col-12 col-lg-4">
+    <div class="control-card h-100">
+      <div class="control-card-header d-flex justify-content-between align-items-center">
+        <h3 class="control-card-title text-white">
+          <i class="bi bi-bar-chart text-info"></i>Shipments by Status
+        </h3>
+        <span class="badge bg-dark text-secondary" style="font-size: 0.68rem;">Transit Telemetry</span>
+      </div>
+      <div class="control-card-body d-flex flex-column justify-content-center">
+        <div style="height: 220px; position: relative;">
+          <canvas id="shipmentsChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Operational Priority Tables Row -->
+<div class="row g-3">
+  <!-- Top Ranked At-Risk Customer Orders -->
+  <div class="col-12 col-xl-7">
+    <div class="control-card">
+      <div class="control-card-header d-flex justify-content-between align-items-center">
+        <h3 class="control-card-title text-white">
+          <i class="bi bi-sort-numeric-down text-danger"></i>Highest-Risk Customer Orders
+        </h3>
+        <a href="{{ url_for('risk_queue.index') }}" class="btn btn-sm btn-outline-warning" style="font-size: 0.75rem;">
+          View Full Risk Queue ({{ metrics.affected_orders }}) &rarr;
+        </a>
+      </div>
+      <div class="table-responsive">
+        {% if top_risk_orders %}
+        <table class="table table-control align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 45px;">Rank</th>
+              <th>Order #</th>
+              <th>Customer</th>
+              <th>Deadline</th>
+              <th>Affected SKU</th>
+              <th style="min-width: 130px;">Risk Score</th>
+              <th>Severity</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in top_risk_orders %}
+            <tr>
+              <td>
+                <span class="badge {% if o.rank == 1 %}bg-danger{% elif o.rank <= 3 %}bg-warning text-dark{% else %}bg-secondary{% endif %} font-monospace fw-bold">
+                  #{{ o.rank }}
+                </span>
+              </td>
+              <td>
+                <span class="text-white font-monospace fw-bold">{{ o.order_number }}</span>
+              </td>
+              <td>
+                <div class="text-white small fw-semibold">{{ o.customer_name }}</div>
+                <span class="badge bg-dark text-warning border border-secondary" style="font-size: 0.65rem;">{{ o.customer_tier or 'Standard' }}</span>
+              </td>
+              <td>
+                <span class="text-white small font-monospace">{{ o.delivery_deadline[:10] if o.delivery_deadline else 'TBD' }}</span>
+              </td>
+              <td>
+                <span class="text-warning font-monospace small fw-bold">{{ o.affected_sku }}</span>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="font-monospace fw-bold {% if o.severity == 'Critical' %}text-danger{% elif o.severity == 'High' %}text-warning{% else %}text-info{% endif %}" style="font-size: 0.85rem;">
+                    {{ "{:.2f}".format(o.final_risk_score) }}
+                  </span>
+                  <div class="progress flex-grow-1" style="height: 5px; background-color: var(--border-subtle); border-radius: 2px;">
+                    <div class="progress-bar {% if o.severity == 'Critical' %}bg-danger{% elif o.severity == 'High' %}bg-warning{% else %}bg-info{% endif %}"
+                         style="width: {{ o.final_risk_score }}%;">
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                {% if o.severity == 'Critical' %}
+                  <span class="badge bg-danger">Critical</span>
+                {% elif o.severity == 'High' %}
+                  <span class="badge bg-warning text-dark">High</span>
+                {% else %}
+                  <span class="badge bg-info text-dark">Medium</span>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{{ url_for('risk_queue.index', q=o.order_number) }}" class="btn btn-sm btn-outline-info py-0 px-2" style="font-size: 0.72rem;">
+                  Inspect
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state p-4 text-center">
+          <i class="bi bi-shield-check text-success fs-2 mb-2"></i>
+          <h6 class="text-white">No Orders Stored in Database</h6>
+          <p class="text-secondary small mb-0">Zero customer orders at risk. All commitments have sufficient stock and uncompromised schedules.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Highest-Risk Active Disruptions -->
+  <div class="col-12 col-xl-5">
+    <div class="control-card">
+      <div class="control-card-header d-flex justify-content-between align-items-center">
+        <h3 class="control-card-title text-white">
+          <i class="bi bi-exclamation-triangle-fill text-danger"></i>Active Disruption Events
+        </h3>
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('webhooks.simulator') }}" class="btn btn-sm btn-outline-warning" style="font-size: 0.72rem;">
+            Simulator
+          </a>
+          <a href="{{ url_for('logistics.disruptions') }}" class="btn btn-sm btn-outline-secondary" style="font-size: 0.72rem;">
+            View All
+          </a>
+        </div>
+      </div>
+      <div class="table-responsive">
+        {% if recent_disruptions %}
+        <table class="table table-control align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Incident</th>
+              <th>Type</th>
+              <th>Severity</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in recent_disruptions %}
+            <tr>
+              <td class="fw-bold text-white font-monospace small">{{ d.disruption_code }}</td>
+              <td>
+                <div class="text-white small fw-semibold">{{ d.title[:30] }}...</div>
+                <div>
+                  {% if d.shortage_category == 'Confirmed Shortage' %}
+                    <span class="badge bg-danger" style="font-size: 0.65rem;">Confirmed Shortage</span>
+                  {% elif d.shortage_category == 'Potential Shortage' %}
+                    <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">Potential Shortage</span>
+                  {% else %}
+                    <span class="badge bg-secondary" style="font-size: 0.65rem;">Transit Delay</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="text-secondary small">{{ d.disruption_type }}</td>
+              <td>
+                {% if d.severity == 'Critical' %}
+                  <span class="badge bg-danger">Critical</span>
+                {% elif d.severity == 'High' %}
+                  <span class="badge bg-warning text-dark">High</span>
+                {% else %}
+                  <span class="badge bg-primary">{{ d.severity }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{{ url_for('logistics.disruption_detail', disruption_id=d.id) }}" class="btn btn-sm btn-outline-warning py-0 px-2" style="font-size: 0.72rem;">
+                  Inspect
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state p-4 text-center">
+          <i class="bi bi-shield-check text-success fs-2 mb-2"></i>
+          <h6 class="text-white">Zero Disruption Records in Database</h6>
+          <p class="text-secondary small mb-0">No active disruptions registered in SQLite database.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Phase 4: Recent Recovery Plans & Governance Activity Row -->
+<div class="row g-4 mb-4">
+  <!-- Recent Recovery Plans -->
+  <div class="col-12 col-xl-7">
+    <div class="control-card">
+      <div class="control-card-header d-flex justify-content-between align-items-center">
+        <h3 class="control-card-title text-white">
+          <i class="bi bi-shield-check text-warning"></i>Recent Recovery Plans
+        </h3>
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('recovery.index') }}" class="btn btn-sm btn-outline-warning" style="font-size: 0.72rem;">
+            View All Plans
+          </a>
+        </div>
+      </div>
+      <div class="table-responsive">
+        {% if recent_recovery_plans %}
+          <table class="table table-control align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Plan Code</th>
+                <th>Strategy</th>
+                <th>Disruption</th>
+                <th>Est. Cost</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in recent_recovery_plans %}
+                <tr>
+                  <td class="fw-bold font-monospace text-info">
+                    <a href="{{ url_for('recovery.plan_detail', plan_id=p.id) }}" class="text-info text-decoration-none">
+                      {{ p.plan_code }}
+                    </a>
+                  </td>
+                  <td class="small text-light">{{ p.strategy_type }}</td>
+                  <td class="small text-secondary">{{ p.disruption.disruption_code if p.disruption else 'N/A' }}</td>
+                  <td class="small fw-semibold text-warning">${{ "%.2f"|format(p.estimated_cost) }}</td>
+                  <td>
+                    {% if p.status == 'Approved' %}
+                      <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.65rem;">Approved</span>
+                    {% elif p.status == 'Pending Approval' %}
+                      <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size: 0.65rem;">Pending</span>
+                    {% elif p.status == 'Executed' %}
+                      <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.65rem;">Executed</span>
+                    {% else %}
+                      <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ p.status }}</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a href="{{ url_for('recovery.plan_detail', plan_id=p.id) }}" class="btn btn-sm btn-outline-info py-0 px-2" style="font-size: 0.72rem;">
+                      Inspect
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty-state p-4 text-center">
+            <i class="bi bi-shield-plus text-secondary fs-2 mb-2"></i>
+            <h6 class="text-white">No Recovery Plans Created Yet</h6>
+            <p class="text-secondary small mb-0">Navigate to Disruption Details to generate intelligent candidate recovery options.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Governance & Execution Activity -->
+  <div class="col-12 col-xl-5">
+    <div class="control-card">
+      <div class="control-card-header d-flex justify-content-between align-items-center">
+        <h3 class="control-card-title text-white">
+          <i class="bi bi-journal-check text-info"></i>Governance &amp; Execution Audit
+        </h3>
+        <a href="{{ url_for('recovery.approvals') }}" class="btn btn-sm btn-outline-secondary" style="font-size: 0.72rem;">
+          Approvals
+        </a>
+      </div>
+      <div class="table-responsive">
+        {% if recent_governance_actions %}
+          <table class="table table-control align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Operator</th>
+                <th>Description</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for act in recent_governance_actions %}
+                <tr>
+                  <td>
+                    <span class="badge bg-dark border border-secondary text-light" style="font-size: 0.65rem;">{{ act.action }}</span>
+                  </td>
+                  <td class="small text-light">{{ act.user.username if act.user else 'System' }}</td>
+                  <td class="small text-secondary text-truncate" style="max-width: 180px;">{{ act.description }}</td>
+                  <td class="small text-secondary" style="font-size: 0.7rem;">{{ act.timestamp.strftime('%m-%d %H:%M') if act.timestamp else '' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty-state p-4 text-center">
+            <i class="bi bi-journal-text text-secondary fs-2 mb-2"></i>
+            <h6 class="text-white">No Governance Events Recorded</h6>
+            <p class="text-secondary small mb-0">Approval submissions, decisions, and simulated executions will log here in real time.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

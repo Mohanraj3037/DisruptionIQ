@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Carrier Webhook Simulator{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-broadcast text-warning me-2"></i>Simulated Carrier Webhook Gate
+    </h2>
+    <p class="text-secondary small mb-0">
+      Trigger real-time telemetry updates and test idempotent event ingestion against logistics shipments.
+    </p>
+  </div>
+  <div>
+    <span class="badge" style="background-color: var(--bg-slate); border: 1px solid var(--border-subtle); color: var(--accent-teal); padding: 0.45rem 0.75rem;">
+      <i class="bi bi-hdd-network me-1"></i> POST /api/webhooks/carrier
+    </span>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Presets & Simulator Form -->
+  <div class="col-12 col-lg-7">
+    <div class="control-card">
+      <div class="control-card-header">
+        <h3 class="control-card-title">
+          <i class="bi bi-send text-info"></i>Dispatch Carrier Telemetry Event
+        </h3>
+        <span class="badge bg-dark text-secondary">JSON Payload Simulation</span>
+      </div>
+      <div class="control-card-body">
+        <!-- Quick Preset Triggers -->
+        <div class="mb-4 pb-3 border-bottom" style="border-color: var(--border-subtle) !important;">
+          <div class="text-secondary small fw-bold text-uppercase mb-2" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+            One-Click Demonstration Presets:
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-sm btn-outline-warning" onclick="loadPreset('A')">
+              <i class="bi bi-clock-history me-1"></i> Scenario A: Inject 72h Delay (SHP-2026-003)
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-info" onclick="loadPreset('transit')">
+              <i class="bi bi-truck me-1"></i> Transit Update (SHP-2026-001)
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-success" onclick="loadPreset('delivered')">
+              <i class="bi bi-check2-circle me-1"></i> Mark Delivered (SHP-2026-006)
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="loadPreset('duplicate')">
+              <i class="bi bi-copy me-1"></i> Test Duplicate Event (Idempotency)
+            </button>
+          </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('webhooks.simulator') }}" id="webhookForm">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="event_id" class="form-label text-secondary small fw-semibold">Event Identifier (Unique)</label>
+              <input type="text" class="form-control bg-dark text-white border-secondary" id="event_id" name="event_id" value="{{ now_id }}" required>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="tracking_number" class="form-label text-secondary small fw-semibold">Target Shipment</label>
+              <select class="form-select bg-dark text-white border-secondary" id="tracking_number" name="tracking_number" required>
+                {% for s in active_shipments %}
+                <option value="{{ s.tracking_number }}">
+                  {{ s.tracking_number }} — {{ s.carrier }} ({{ s.status }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="event_type" class="form-label text-secondary small fw-semibold">Carrier Event Type</label>
+              <select class="form-select bg-dark text-white border-secondary" id="event_type" name="event_type" required>
+                <option value="SHIPMENT_DELAY">SHIPMENT_DELAY (Berth or Weather Delay)</option>
+                <option value="PORT_CONGESTION">PORT_CONGESTION (Anchorage Congestion)</option>
+                <option value="CUSTOMS_HOLD">CUSTOMS_HOLD (Regulatory Inspection)</option>
+                <option value="STATUS_UPDATE">STATUS_UPDATE (Standard Checkpoint)</option>
+                <option value="DELIVERED">DELIVERED (Final Arrival Confirmed)</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="status" class="form-label text-secondary small fw-semibold">Resulting Shipment Status</label>
+              <select class="form-select bg-dark text-white border-secondary" id="status" name="status">
+                <option value="Delayed">Delayed</option>
+                <option value="In Transit">In Transit</option>
+                <option value="Delivered">Delivered</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <label for="delay_hours" class="form-label text-secondary small fw-semibold">Delay Duration (Hours)</label>
+              <input type="number" class="form-control bg-dark text-white border-secondary" id="delay_hours" name="delay_hours" value="72">
+            </div>
+
+            <div class="col-12 col-md-8">
+              <label for="location" class="form-label text-secondary small fw-semibold">Current Telemetry Location</label>
+              <input type="text" class="form-control bg-dark text-white border-secondary" id="location" name="location" value="Port of Long Beach - Anchorage Berth 4">
+            </div>
+
+            <div class="col-12">
+              <label for="reason" class="form-label text-secondary small fw-semibold">Carrier Incident Explanation</label>
+              <textarea class="form-control bg-dark text-white border-secondary" id="reason" name="reason" rows="2">Dense sea fog and terminal container berth backlog.</textarea>
+            </div>
+          </div>
+
+          <div class="mt-4 text-end">
+            <button type="submit" class="btn btn-control-gold px-4">
+              <i class="bi bi-broadcast me-1"></i> Send Webhook Request
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Webhook Ingestion Feed -->
+  <div class="col-12 col-lg-5">
+    <div class="control-card">
+      <div class="control-card-header">
+        <h3 class="control-card-title">
+          <i class="bi bi-activity text-teal"></i>Recent Ingestion Log
+        </h3>
+        <span class="badge bg-dark text-secondary">Idempotent Audit</span>
+      </div>
+      <div class="control-card-body p-0">
+        {% if recent_events %}
+        <div class="list-group list-group-flush bg-transparent">
+          {% for ev in recent_events %}
+          <div class="list-group-item bg-transparent text-secondary border-bottom p-3" style="border-color: var(--border-subtle) !important;">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <span class="text-white font-monospace small fw-bold">{{ ev.event_identifier }}</span>
+              {% if ev.processing_status == 'Processed' %}
+                <span class="badge bg-success" style="font-size: 0.65rem;">Processed</span>
+              {% else %}
+                <span class="badge bg-danger" style="font-size: 0.65rem;">Failed</span>
+              {% endif %}
+            </div>
+            <div class="small mb-1">
+              <span class="badge bg-dark text-warning">{{ ev.event_type }}</span> &bull; Source: {{ ev.source }}
+            </div>
+            <div class="text-muted" style="font-size: 0.72rem;">
+              Received: {{ ev.received_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state p-4">
+          <i class="bi bi-inbox text-secondary"></i>
+          <h6>No Webhooks Ingested Yet</h6>
+          <p class="small">Use the form or quick presets on the left to simulate incoming carrier telemetry.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function loadPreset(type) {
+  const eventId = document.getElementById('event_id');
+  const trackingNumber = document.getElementById('tracking_number');
+  const eventType = document.getElementById('event_type');
+  const status = document.getElementById('status');
+  const delayHours = document.getElementById('delay_hours');
+  const locationField = document.getElementById('location');
+  const reason = document.getElementById('reason');
+
+  const stamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+
+  if (type === 'A') {
+    eventId.value = 'EVT-BERTH-' + stamp;
+    trackingNumber.value = 'SHP-2026-003';
+    eventType.value = 'PORT_CONGESTION';
+    status.value = 'Delayed';
+    delayHours.value = 72;
+    locationField.value = 'Port of Long Beach - Anchorage Berth 4';
+    reason.value = 'Severe 72h container berth backlog and coastal fog at Port of Long Beach.';
+  } else if (type === 'transit') {
+    eventId.value = 'EVT-AIR-' + stamp;
+    trackingNumber.value = 'SHP-2026-001';
+    eventType.value = 'STATUS_UPDATE';
+    status.value = 'In Transit';
+    delayHours.value = 0;
+    locationField.value = 'Singapore Changi Air Cargo Terminal';
+    reason.value = 'Cargo loaded onto Singapore Airlines flight SQ-781, on schedule.';
+  } else if (type === 'delivered') {
+    eventId.value = 'EVT-DELIV-' + stamp;
+    trackingNumber.value = 'SHP-2026-006';
+    eventType.value = 'DELIVERED';
+    status.value = 'Delivered';
+    delayHours.value = 0;
+    locationField.value = 'WH-EAST Rotterdam Eurohub Gate 2';
+    reason.value = 'Rail freight delivered and accepted at Rotterdam Eurohub receiving bay.';
+  } else if (type === 'duplicate') {
+    eventId.value = 'EVT-TEST-DUPLICATE-KEY';
+    trackingNumber.value = 'SHP-2026-003';
+    eventType.value = 'SHIPMENT_DELAY';
+    status.value = 'Delayed';
+    delayHours.value = 48;
+    locationField.value = 'Pacific Ocean Checkpoint';
+    reason.value = 'Idempotency test payload — duplicate event identifier.';
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Procurement &amp; Financial Approvals — Governance Gate{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-check2-circle text-warning me-2"></i>Procurement &amp; Financial Approvals
+    </h2>
+    <p class="text-secondary small mb-0">
+      Multi-tier governance gate for high-cost inventory re-routing, supplier procurement, and inter-warehouse logistics transfers.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('recovery.index') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i> Back to Plans
+    </a>
+  </div>
+</div>
+
+<!-- Pending Approvals Queue -->
+<div class="card mb-4 border-0 shadow-sm" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+  <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-3" style="border-bottom: 1px solid var(--border-color, #2a2f3e);">
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge bg-warning text-dark px-2 py-1">{{ pending_approvals|length }}</span>
+      <h5 class="card-title text-white mb-0 fs-6 fw-semibold">Pending Recovery Plan Approvals</h5>
+    </div>
+    <span class="badge bg-secondary-subtle text-secondary small">Separation of Duties Enforced</span>
+  </div>
+  <div class="card-body p-0">
+    {% if pending_approvals %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 text-white" style="--bs-table-bg: transparent; --bs-table-hover-bg: rgba(255, 255, 255, 0.03);">
+          <thead>
+            <tr class="text-secondary text-uppercase small" style="border-bottom: 1px solid var(--border-color, #2a2f3e); font-size: 0.75rem;">
+              <th class="ps-3 py-3">Plan Code</th>
+              <th>Disruption / SKU</th>
+              <th>Strategy Type</th>
+              <th>Transfer Path</th>
+              <th>Est. Cost</th>
+              <th>Requested By</th>
+              <th>Submitted</th>
+              <th class="text-end pe-3">Governance Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for apprv in pending_approvals %}
+              {% set plan = apprv.recovery_plan %}
+              <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                <td class="ps-3 py-3">
+                  <a href="{{ url_for('recovery.plan_detail', plan_id=plan.id) }}" class="fw-semibold text-info text-decoration-none">
+                    {{ plan.plan_code }}
+                  </a>
+                  <div class="small text-secondary">v{{ plan.version }}</div>
+                </td>
+                <td>
+                  <div class="fw-medium text-white">{{ plan.disruption.disruption_code if plan.disruption else 'N/A' }}</div>
+                  <div class="small text-secondary">
+                    {% if plan.sku %}
+                      <code>{{ plan.sku }}</code> ({{ plan.quantity }} units)
+                    {% else %}
+                      General Impact
+                    {% endif %}
+                  </div>
+                </td>
+                <td>
+                  <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">
+                    {{ plan.strategy_type }}
+                  </span>
+                </td>
+                <td>
+                  {% if plan.source_warehouse and plan.destination_warehouse %}
+                    <span class="small">{{ plan.source_warehouse.warehouse_code }} &rarr; {{ plan.destination_warehouse.warehouse_code }}</span>
+                  {% elif plan.source_location %}
+                    <span class="small">{{ plan.source_location }} &rarr; {{ plan.destination_location }}</span>
+                  {% else %}
+                    <span class="text-secondary small">&mdash;</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="fw-semibold text-warning">${{ "%.2f"|format(plan.estimated_cost) }}</span>
+                </td>
+                <td>
+                  <span class="small text-light">{{ apprv.requester.full_name or apprv.requester.username }}</span>
+                  <div class="small text-secondary">{{ apprv.requester.role }}</div>
+                </td>
+                <td>
+                  <span class="small text-secondary">{{ apprv.requested_at.strftime('%Y-%m-%d %H:%M') if apprv.requested_at else '&mdash;' }}</span>
+                </td>
+                <td class="text-end pe-3">
+                  <div class="btn-group btn-group-sm">
+                    <a href="{{ url_for('recovery.plan_detail', plan_id=plan.id) }}" class="btn btn-outline-light btn-sm" title="Review Full Plan">
+                      <i class="bi bi-eye"></i> Review
+                    </a>
+                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#approveModal{{ plan.id }}" title="Approve">
+                      <i class="bi bi-check-lg"></i> Approve
+                    </button>
+                    <button type="button" class="btn btn-warning btn-sm text-dark" data-bs-toggle="modal" data-bs-target="#changesModal{{ plan.id }}" title="Request Changes">
+                      <i class="bi bi-pencil-square"></i> Changes
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal{{ plan.id }}" title="Reject">
+                      <i class="bi bi-x-lg"></i> Reject
+                    </button>
+                  </div>
+
+                  <!-- Approve Modal -->
+                  <div class="modal fade" id="approveModal{{ plan.id }}" tabindex="-1" aria-hidden="true" style="text-align: left;">
+                    <div class="modal-dialog modal-dialog-centered">
+                      <div class="modal-content text-white" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e);">
+                        <form method="POST" action="{{ url_for('recovery.approval_decision', plan_id=plan.id) }}">
+                          <input type="hidden" name="decision" value="Approved">
+                          <input type="hidden" name="return_to" value="queue">
+                          <div class="modal-header border-bottom" style="border-color: var(--border-color, #2a2f3e) !important;">
+                            <h6 class="modal-title fw-bold text-success">
+                              <i class="bi bi-check-circle me-1"></i> Approve Recovery Plan {{ plan.plan_code }}
+                            </h6>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                          </div>
+                          <div class="modal-body">
+                            <p class="small text-secondary mb-3">
+                              By approving this plan, you authorise simulated execution readiness. Separation of duties is strictly enforced (creators cannot approve their own plans).
+                            </p>
+                            <div class="mb-3">
+                              <label class="form-label small text-secondary">Approval Comments / Authorization Note (Optional)</label>
+                              <textarea name="comments" class="form-control form-control-sm bg-dark text-white border-secondary" rows="3" placeholder="e.g., Financial budget confirmed. Approved for simulated execution."></textarea>
+                            </div>
+                          </div>
+                          <div class="modal-footer border-top" style="border-color: var(--border-color, #2a2f3e) !important;">
+                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-sm btn-success">
+                              <i class="bi bi-check-lg me-1"></i> Confirm Approval
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Request Changes Modal -->
+                  <div class="modal fade" id="changesModal{{ plan.id }}" tabindex="-1" aria-hidden="true" style="text-align: left;">
+                    <div class="modal-dialog modal-dialog-centered">
+                      <div class="modal-content text-white" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e);">
+                        <form method="POST" action="{{ url_for('recovery.approval_decision', plan_id=plan.id) }}">
+                          <input type="hidden" name="decision" value="Changes Requested">
+                          <input type="hidden" name="return_to" value="queue">
+                          <div class="modal-header border-bottom" style="border-color: var(--border-color, #2a2f3e) !important;">
+                            <h6 class="modal-title fw-bold text-warning">
+                              <i class="bi bi-pencil-square me-1"></i> Request Modifications for {{ plan.plan_code }}
+                            </h6>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                          </div>
+                          <div class="modal-body">
+                            <p class="small text-secondary mb-3">
+                              Specify required modifications. The plan will return to <strong>Draft</strong> status for author revision.
+                            </p>
+                            <div class="mb-3">
+                              <label class="form-label small text-secondary fw-semibold">Modification Requirements (Mandatory) <span class="text-danger">*</span></label>
+                              <textarea name="comments" required class="form-control form-control-sm bg-dark text-white border-secondary" rows="3" placeholder="e.g., Please reduce transfer quantity to 40 units to maintain WH-CENTRAL safety buffer."></textarea>
+                            </div>
+                          </div>
+                          <div class="modal-footer border-top" style="border-color: var(--border-color, #2a2f3e) !important;">
+                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-sm btn-warning text-dark">
+                              <i class="bi bi-send me-1"></i> Return for Changes
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Reject Modal -->
+                  <div class="modal fade" id="rejectModal{{ plan.id }}" tabindex="-1" aria-hidden="true" style="text-align: left;">
+                    <div class="modal-dialog modal-dialog-centered">
+                      <div class="modal-content text-white" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e);">
+                        <form method="POST" action="{{ url_for('recovery.approval_decision', plan_id=plan.id) }}">
+                          <input type="hidden" name="decision" value="Rejected">
+                          <input type="hidden" name="return_to" value="queue">
+                          <div class="modal-header border-bottom" style="border-color: var(--border-color, #2a2f3e) !important;">
+                            <h6 class="modal-title fw-bold text-danger">
+                              <i class="bi bi-x-circle me-1"></i> Reject Recovery Plan {{ plan.plan_code }}
+                            </h6>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                          </div>
+                          <div class="modal-body">
+                            <p class="small text-secondary mb-3">
+                              Rejecting this plan marks it as terminal. A justification reason is strictly required.
+                            </p>
+                            <div class="mb-3">
+                              <label class="form-label small text-secondary fw-semibold">Rejection Justification (Mandatory) <span class="text-danger">*</span></label>
+                              <textarea name="comments" required class="form-control form-control-sm bg-dark text-white border-secondary" rows="3" placeholder="e.g., Transfer cost exceeds operational budget ceiling. Alternative supplier required."></textarea>
+                            </div>
+                          </div>
+                          <div class="modal-footer border-top" style="border-color: var(--border-color, #2a2f3e) !important;">
+                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-sm btn-danger">
+                              <i class="bi bi-x-lg me-1"></i> Reject Plan
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5">
+        <div class="mb-3">
+          <i class="bi bi-check2-circle text-success" style="font-size: 3rem;"></i>
+        </div>
+        <h6 class="text-white fw-semibold">No Pending Approvals in Queue</h6>
+        <p class="text-secondary small mb-0">All submitted recovery plans have been reviewed or are in draft status.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Governance Approval History -->
+<div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+  <div class="card-header bg-transparent py-3" style="border-bottom: 1px solid var(--border-color, #2a2f3e);">
+    <h5 class="card-title text-white mb-0 fs-6 fw-semibold">Recent Approval Decisions &amp; Governance Audit</h5>
+  </div>
+  <div class="card-body p-0">
+    {% if history %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 text-white" style="--bs-table-bg: transparent; --bs-table-hover-bg: rgba(255, 255, 255, 0.03);">
+          <thead>
+            <tr class="text-secondary text-uppercase small" style="border-bottom: 1px solid var(--border-color, #2a2f3e); font-size: 0.75rem;">
+              <th class="ps-3 py-3">Plan</th>
+              <th>Decision</th>
+              <th>Approver</th>
+              <th>Governance Notes</th>
+              <th class="text-end pe-3">Decision Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in history %}
+              <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                <td class="ps-3 py-2">
+                  <a href="{{ url_for('recovery.plan_detail', plan_id=item.recovery_plan.id) }}" class="fw-medium text-info text-decoration-none">
+                    {{ item.recovery_plan.plan_code }}
+                  </a>
+                </td>
+                <td>
+                  {% if item.status == 'Approved' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">Approved</span>
+                  {% elif item.status == 'Rejected' %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Rejected</span>
+                  {% elif item.status == 'Changes Requested' %}
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Changes Requested</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ item.status }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="small text-light">{{ item.approver.full_name or item.approver.username if item.approver else 'System' }}</span>
+                  <div class="small text-secondary">{{ item.approver.role if item.approver else '' }}</div>
+                </td>
+                <td>
+                  <span class="small text-secondary">{{ item.notes or '&mdash;' }}</span>
+                </td>
+                <td class="text-end pe-3">
+                  <span class="small text-secondary">{{ item.decision_at.strftime('%Y-%m-%d %H:%M') if item.decision_at else '&mdash;' }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-4 text-secondary small">
+        No past approval decisions recorded.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

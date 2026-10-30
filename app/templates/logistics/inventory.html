@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Multi-Echelon Inventory Control{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-boxes text-warning me-2"></i>Multi-Echelon Inventory Control
+    </h2>
+    <p class="text-secondary small mb-0">
+      Real-time on-hand stock, active order allocations, reserve thresholds and shortage alerts across all distribution hubs.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('data_import.index') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-file-earmark-arrow-up me-1"></i> Import Inventory Updates
+    </a>
+  </div>
+</div>
+
+<!-- KPI Cards for Inventory -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-title">Catalog SKUs</div>
+      <div class="kpi-value text-white font-monospace">{{ total_skus }}</div>
+      <div class="kpi-subtext text-secondary">Active components</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-title">Low Stock SKUs</div>
+      <div class="kpi-value text-danger font-monospace">{{ low_stock_count }}</div>
+      <div class="kpi-subtext text-secondary">At or below reorder threshold</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-title">Warehouses Monitored</div>
+      <div class="kpi-value text-info font-monospace">{{ warehouses|length }}</div>
+      <div class="kpi-subtext text-secondary">East, Central, West</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-title">Filtered Results</div>
+      <div class="kpi-value text-warning font-monospace">{{ inventories|length }}</div>
+      <div class="kpi-subtext text-secondary">Matching criteria</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters and Table -->
+<div class="control-card">
+  <div class="control-card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+    <form method="GET" action="{{ url_for('logistics.inventory') }}" class="d-flex flex-wrap align-items-center gap-2">
+      <!-- Warehouse Filter -->
+      <select name="warehouse" class="form-select form-select-sm bg-dark text-white border-secondary" style="width: auto;">
+        <option value="all" {% if current_wh == 'all' or not current_wh %}selected{% endif %}>All Warehouses</option>
+        {% for wh in warehouses %}
+        <option value="{{ wh.code }}" {% if current_wh == wh.code %}selected{% endif %}>{{ wh.code }} ({{ wh.name }})</option>
+        {% endfor %}
+      </select>
+
+      <!-- Low Stock Only Checkbox -->
+      <div class="form-check form-check-inline ms-2 mb-0">
+        <input class="form-check-input bg-dark border-secondary" type="checkbox" name="low_stock" value="true" id="lowStockCheck" {% if low_stock_only %}checked{% endif %} onchange="this.form.submit()">
+        <label class="form-check-label text-secondary small" for="lowStockCheck">Low Stock Only</label>
+      </div>
+
+      <input type="text" name="q" value="{{ search_q }}" class="form-control form-control-sm bg-dark text-white border-secondary ms-2" placeholder="Search SKU, name, category..." style="width: 220px;">
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Filter</button>
+      {% if search_q or (current_wh and current_wh != 'all') or low_stock_only %}
+      <a href="{{ url_for('logistics.inventory') }}" class="btn btn-sm btn-outline-danger">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="table-responsive">
+    {% if inventories %}
+    <table class="table table-control align-middle mb-0">
+      <thead>
+        <tr>
+          <th>SKU Identifier</th>
+          <th>Component Description</th>
+          <th>Category</th>
+          <th>Warehouse</th>
+          <th>On Hand</th>
+          <th>Reserved</th>
+          <th>Available</th>
+          <th>Reorder Pt</th>
+          <th>Unit Cost</th>
+          <th>Valuation</th>
+          <th>Stock Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in inventories %}
+        {% set avail = inv.available_quantity %}
+        <tr>
+          <td>
+            <span class="text-warning font-monospace fw-bold">{{ inv.sku }}</span>
+          </td>
+          <td>
+            <div class="text-white fw-semibold">{{ inv.item_name }}</div>
+          </td>
+          <td>
+            <span class="badge bg-dark text-secondary border border-secondary">{{ inv.category }}</span>
+          </td>
+          <td>
+            <span class="badge bg-dark text-info border border-secondary font-monospace">{{ inv.warehouse.code }}</span>
+          </td>
+          <td class="text-white font-monospace">{{ "{:,}".format(inv.quantity) }}</td>
+          <td class="text-secondary font-monospace">{{ "{:,}".format(inv.reserved_quantity) }}</td>
+          <td>
+            <span class="font-monospace fw-bold {% if avail <= 0 %}text-danger{% elif avail <= inv.reorder_point %}text-warning{% else %}text-success{% endif %}">
+              {{ "{:,}".format(avail) }}
+            </span>
+          </td>
+          <td class="text-secondary font-monospace">{{ "{:,}".format(inv.reorder_point) }}</td>
+          <td class="text-secondary font-monospace">${{ "{:,.2f}".format(inv.unit_cost) }}</td>
+          <td class="text-white font-monospace">${{ "{:,.2f}".format(inv.quantity * inv.unit_cost) }}</td>
+          <td>
+            {% if avail <= 0 %}
+              <span class="badge bg-danger"><i class="bi bi-exclamation-octagon-fill me-1"></i>Stockout</span>
+            {% elif avail <= inv.reorder_point %}
+              <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle-fill me-1"></i>Low Stock</span>
+            {% else %}
+              <span class="badge bg-success"><i class="bi bi-check2-circle me-1"></i>Optimal</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state p-5 text-center">
+      <i class="bi bi-boxes text-muted fs-1 mb-2"></i>
+      <h4 class="text-white">No Inventory Records Found</h4>
+      <p class="text-secondary">No stock balances matched your warehouse selection or search filter.</p>
+      <a href="{{ url_for('logistics.inventory') }}" class="btn btn-sm btn-outline-warning">Clear Filters</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
