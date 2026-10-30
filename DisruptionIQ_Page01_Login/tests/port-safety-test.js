@@ -1,0 +1,11 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {isBrowserSafePort,nextBrowserSafePort,normalizeBrowserSafePort}=require('../src/utils/browser-safe-port');
+assert.equal(isBrowserSafePort(3000),true);
+assert.equal(isBrowserSafePort(5057),true);
+assert.equal(isBrowserSafePort(5060),false);
+assert.equal(isBrowserSafePort(5061),false);
+assert.equal(nextBrowserSafePort(5059),5062);
+assert.equal(normalizeBrowserSafePort(5060),5062);
+assert.equal(normalizeBrowserSafePort(3000),3000);
+console.log('PASS: browser-safe port selection');

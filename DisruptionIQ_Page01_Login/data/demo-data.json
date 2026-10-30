@@ -1,0 +1,594 @@
+{
+  "environment": "DEMO DATA",
+  "workspace": "Acme Global Logistics",
+  "updatedAt": "2026-10-30T09:25:00+05:30",
+  "overview": {
+    "networkExposure": 72,
+    "totalUnits": 48920,
+    "atRiskShipments": 14,
+    "recoveryValue": 284000,
+    "activeIncidents": 5,
+    "criticalIncidents": 1,
+    "monitoredSuppliers": 28,
+    "inventoryCoverage": 65,
+    "disruptionTrend": {
+      "labels": [
+        "24 Oct",
+        "25 Oct",
+        "26 Oct",
+        "27 Oct",
+        "28 Oct",
+        "29 Oct",
+        "30 Oct"
+      ],
+      "detected": [
+        3,
+        4,
+        2,
+        5,
+        4,
+        6,
+        5
+      ],
+      "resolved": [
+        2,
+        2,
+        3,
+        2,
+        3,
+        2,
+        3
+      ]
+    },
+    "regionalExposure": {
+      "labels": [
+        "APAC",
+        "Europe",
+        "Middle East",
+        "North America"
+      ],
+      "values": [
+        84,
+        62,
+        48,
+        35
+      ]
+    },
+    "shipmentStatus": {
+      "labels": [
+        "On schedule",
+        "At risk",
+        "Delayed"
+      ],
+      "values": [
+        10,
+        9,
+        5
+      ]
+    },
+    "networkNodes": [
+      {
+        "id": "SZX",
+        "name": "Shenzhen",
+        "type": "Supplier",
+        "x": 13,
+        "y": 25,
+        "risk": "high"
+      },
+      {
+        "id": "SIN",
+        "name": "Singapore",
+        "type": "Port",
+        "x": 32,
+        "y": 57,
+        "risk": "critical"
+      },
+      {
+        "id": "MAA",
+        "name": "Chennai",
+        "type": "Distribution",
+        "x": 49,
+        "y": 75,
+        "risk": "medium"
+      },
+      {
+        "id": "DXB",
+        "name": "Dubai",
+        "type": "Hub",
+        "x": 61,
+        "y": 36,
+        "risk": "medium"
+      },
+      {
+        "id": "RTM",
+        "name": "Rotterdam",
+        "type": "Port",
+        "x": 79,
+        "y": 22,
+        "risk": "high"
+      },
+      {
+        "id": "FRA",
+        "name": "Frankfurt",
+        "type": "Distribution",
+        "x": 86,
+        "y": 51,
+        "risk": "low"
+      },
+      {
+        "id": "ORD",
+        "name": "Chicago",
+        "type": "Distribution",
+        "x": 70,
+        "y": 78,
+        "risk": "low"
+      }
+    ],
+    "networkEdges": [
+      [
+        "SZX",
+        "SIN"
+      ],
+      [
+        "SIN",
+        "MAA"
+      ],
+      [
+        "SIN",
+        "DXB"
+      ],
+      [
+        "DXB",
+        "RTM"
+      ],
+      [
+        "DXB",
+        "FRA"
+      ],
+      [
+        "RTM",
+        "FRA"
+      ],
+      [
+        "MAA",
+        "ORD"
+      ],
+      [
+        "FRA",
+        "ORD"
+      ]
+    ]
+  },
+  "incidents": [
+    {
+      "id": "DI-2084",
+      "severity": "Critical",
+      "title": "Port congestion detected",
+      "route": "Singapore → Rotterdam",
+      "impact": "Assembly buffer: 18 hours",
+      "age": "4 min ago",
+      "status": "Open",
+      "owner": "Network operations"
+    },
+    {
+      "id": "DI-2081",
+      "severity": "High",
+      "title": "Supplier capacity reduction",
+      "route": "Shenzhen → Chennai",
+      "impact": "12 shipments exposed",
+      "age": "19 min ago",
+      "status": "Open",
+      "owner": "Supplier management"
+    },
+    {
+      "id": "DI-2079",
+      "severity": "High",
+      "title": "Weather corridor deviation",
+      "route": "Dubai → Rotterdam",
+      "impact": "Estimated +9.5 hours",
+      "age": "42 min ago",
+      "status": "Investigating",
+      "owner": "Logistics control"
+    },
+    {
+      "id": "DI-2073",
+      "severity": "Medium",
+      "title": "Inventory buffer below threshold",
+      "route": "Chennai distribution",
+      "impact": "6.5 days of cover",
+      "age": "1 hr ago",
+      "status": "Open",
+      "owner": "Inventory planning"
+    },
+    {
+      "id": "DI-2068",
+      "severity": "Low",
+      "title": "Customs clearance taking longer",
+      "route": "Frankfurt inbound",
+      "impact": "+3 hours against plan",
+      "age": "2 hrs ago",
+      "status": "Monitoring",
+      "owner": "Customs desk"
+    }
+  ],
+  "shipments": [
+    {
+      "id": "SHP-48291",
+      "route": "Singapore → Rotterdam",
+      "carrier": "Maersk Line",
+      "eta": "02 Nov, 08:30",
+      "status": "At risk",
+      "risk": 86,
+      "progress": 71,
+      "units": 4200
+    },
+    {
+      "id": "SHP-48276",
+      "route": "Shenzhen → Chennai",
+      "carrier": "CMA CGM",
+      "eta": "01 Nov, 18:00",
+      "status": "Delayed",
+      "risk": 78,
+      "progress": 58,
+      "units": 2850
+    },
+    {
+      "id": "SHP-48264",
+      "route": "Dubai → Rotterdam",
+      "carrier": "Hapag-Lloyd",
+      "eta": "03 Nov, 11:15",
+      "status": "At risk",
+      "risk": 64,
+      "progress": 82,
+      "units": 1900
+    },
+    {
+      "id": "SHP-48252",
+      "route": "Chennai → Chicago",
+      "carrier": "FedEx Logistics",
+      "eta": "04 Nov, 06:45",
+      "status": "On schedule",
+      "risk": 22,
+      "progress": 46,
+      "units": 1250
+    },
+    {
+      "id": "SHP-48237",
+      "route": "Rotterdam → Frankfurt",
+      "carrier": "DHL Supply Chain",
+      "eta": "31 Oct, 16:20",
+      "status": "On schedule",
+      "risk": 18,
+      "progress": 91,
+      "units": 760
+    },
+    {
+      "id": "SHP-48211",
+      "route": "Singapore → Dubai",
+      "carrier": "Emirates Shipping",
+      "eta": "01 Nov, 09:10",
+      "status": "Delayed",
+      "risk": 71,
+      "progress": 63,
+      "units": 2160
+    },
+    {
+      "id": "SHP-48193",
+      "route": "Shenzhen → Singapore",
+      "carrier": "Maersk Line",
+      "eta": "01 Nov, 08:00",
+      "status": "On schedule",
+      "risk": 23,
+      "progress": 84,
+      "units": 1800
+    },
+    {
+      "id": "SHP-48192",
+      "route": "Singapore → Chennai",
+      "carrier": "CMA CGM",
+      "eta": "02 Nov, 09:07",
+      "status": "On schedule",
+      "risk": 26,
+      "progress": 91,
+      "units": 2300
+    },
+    {
+      "id": "SHP-48191",
+      "route": "Chennai → Dubai",
+      "carrier": "Hapag-Lloyd",
+      "eta": "03 Nov, 10:14",
+      "status": "On schedule",
+      "risk": 29,
+      "progress": 38,
+      "units": 1950
+    },
+    {
+      "id": "SHP-48190",
+      "route": "Dubai → Frankfurt",
+      "carrier": "DHL Supply Chain",
+      "eta": "04 Nov, 11:21",
+      "status": "On schedule",
+      "risk": 32,
+      "progress": 45,
+      "units": 2400
+    },
+    {
+      "id": "SHP-48189",
+      "route": "Rotterdam → Chicago",
+      "carrier": "FedEx Logistics",
+      "eta": "05 Nov, 12:28",
+      "status": "On schedule",
+      "risk": 35,
+      "progress": 52,
+      "units": 1750
+    },
+    {
+      "id": "SHP-48188",
+      "route": "Singapore → Rotterdam",
+      "carrier": "Emirates Shipping",
+      "eta": "01 Nov, 13:35",
+      "status": "On schedule",
+      "risk": 38,
+      "progress": 59,
+      "units": 2100
+    },
+    {
+      "id": "SHP-48187",
+      "route": "Chennai → Chicago",
+      "carrier": "Maersk Line",
+      "eta": "02 Nov, 14:42",
+      "status": "On schedule",
+      "risk": 41,
+      "progress": 66,
+      "units": 1650
+    },
+    {
+      "id": "SHP-48186",
+      "route": "Frankfurt → Rotterdam",
+      "carrier": "CMA CGM",
+      "eta": "03 Nov, 15:49",
+      "status": "On schedule",
+      "risk": 24,
+      "progress": 73,
+      "units": 1900
+    },
+    {
+      "id": "SHP-48185",
+      "route": "Dubai → Singapore",
+      "carrier": "Hapag-Lloyd",
+      "eta": "04 Nov, 16:56",
+      "status": "At risk",
+      "risk": 66,
+      "progress": 80,
+      "units": 2200
+    },
+    {
+      "id": "SHP-48184",
+      "route": "Shenzhen → Singapore",
+      "carrier": "DHL Supply Chain",
+      "eta": "05 Nov, 17:03",
+      "status": "At risk",
+      "risk": 68,
+      "progress": 87,
+      "units": 1400
+    },
+    {
+      "id": "SHP-48183",
+      "route": "Singapore → Chennai",
+      "carrier": "FedEx Logistics",
+      "eta": "01 Nov, 08:10",
+      "status": "At risk",
+      "risk": 70,
+      "progress": 94,
+      "units": 1800
+    },
+    {
+      "id": "SHP-48182",
+      "route": "Chennai → Dubai",
+      "carrier": "Emirates Shipping",
+      "eta": "02 Nov, 09:17",
+      "status": "At risk",
+      "risk": 72,
+      "progress": 41,
+      "units": 1600
+    },
+    {
+      "id": "SHP-48181",
+      "route": "Dubai → Frankfurt",
+      "carrier": "Maersk Line",
+      "eta": "03 Nov, 10:24",
+      "status": "At risk",
+      "risk": 55,
+      "progress": 48,
+      "units": 2000
+    },
+    {
+      "id": "SHP-48180",
+      "route": "Rotterdam → Chicago",
+      "carrier": "CMA CGM",
+      "eta": "04 Nov, 11:31",
+      "status": "At risk",
+      "risk": 57,
+      "progress": 55,
+      "units": 2500
+    },
+    {
+      "id": "SHP-48179",
+      "route": "Singapore → Rotterdam",
+      "carrier": "Hapag-Lloyd",
+      "eta": "05 Nov, 12:38",
+      "status": "At risk",
+      "risk": 59,
+      "progress": 62,
+      "units": 2100
+    },
+    {
+      "id": "SHP-48178",
+      "route": "Chennai → Chicago",
+      "carrier": "DHL Supply Chain",
+      "eta": "01 Nov, 13:45",
+      "status": "Delayed",
+      "risk": 93,
+      "progress": 69,
+      "units": 1900
+    },
+    {
+      "id": "SHP-48177",
+      "route": "Frankfurt → Rotterdam",
+      "carrier": "FedEx Logistics",
+      "eta": "02 Nov, 14:52",
+      "status": "Delayed",
+      "risk": 79,
+      "progress": 76,
+      "units": 2200
+    },
+    {
+      "id": "SHP-48176",
+      "route": "Dubai → Singapore",
+      "carrier": "Emirates Shipping",
+      "eta": "03 Nov, 15:59",
+      "status": "Delayed",
+      "risk": 82,
+      "progress": 83,
+      "units": 2250
+    }
+  ],
+  "suppliers": [
+    {
+      "name": "Shenzhen Precision Works",
+      "region": "APAC",
+      "risk": 88,
+      "reliability": 91,
+      "exposure": "Capacity"
+    },
+    {
+      "name": "Meridian Components",
+      "region": "Europe",
+      "risk": 74,
+      "reliability": 86,
+      "exposure": "Single source"
+    },
+    {
+      "name": "Asterion Industrial",
+      "region": "APAC",
+      "risk": 63,
+      "reliability": 89,
+      "exposure": "Lead time"
+    },
+    {
+      "name": "Northstar Materials",
+      "region": "North America",
+      "risk": 41,
+      "reliability": 95,
+      "exposure": "Transport"
+    },
+    {
+      "name": "Gulf Distribution Group",
+      "region": "Middle East",
+      "risk": 36,
+      "reliability": 93,
+      "exposure": "Weather"
+    }
+  ],
+  "recoveryPlans": [
+    {
+      "id": "RP-041",
+      "title": "Reroute Singapore-origin freight",
+      "priority": "Critical",
+      "status": "In progress",
+      "owner": "Ananya S.",
+      "due": "31 Oct",
+      "value": 84000,
+      "progress": 68
+    },
+    {
+      "id": "RP-038",
+      "title": "Activate alternate Shenzhen supplier",
+      "priority": "High",
+      "status": "Awaiting approval",
+      "owner": "Rahul M.",
+      "due": "01 Nov",
+      "value": 62000,
+      "progress": 35
+    },
+    {
+      "id": "RP-035",
+      "title": "Rebalance Chennai safety stock",
+      "priority": "Medium",
+      "status": "Planned",
+      "owner": "Priya K.",
+      "due": "03 Nov",
+      "value": 48000,
+      "progress": 12
+    },
+    {
+      "id": "RP-031",
+      "title": "Consolidate Rotterdam inbound loads",
+      "priority": "Low",
+      "status": "Completed",
+      "owner": "James T.",
+      "due": "29 Oct",
+      "value": 90000,
+      "progress": 100
+    }
+  ],
+  "approvals": [
+    {
+      "id": "APR-118",
+      "title": "Approve alternate supplier allocation",
+      "detail": "Shenzhen Precision Works · 2,400 units",
+      "requestedBy": "Rahul M.",
+      "time": "12 min ago",
+      "impact": "$62,000 exposure reduced",
+      "status": "Pending"
+    },
+    {
+      "id": "APR-116",
+      "title": "Authorize priority freight reroute",
+      "detail": "Singapore → Rotterdam · 3 shipments",
+      "requestedBy": "Ananya S.",
+      "time": "38 min ago",
+      "impact": "$84,000 recovery value",
+      "status": "Pending"
+    },
+    {
+      "id": "APR-112",
+      "title": "Increase Chennai buffer stock",
+      "detail": "Chennai distribution · +800 units",
+      "requestedBy": "Priya K.",
+      "time": "2 hrs ago",
+      "impact": "1.8 additional days of cover",
+      "status": "Pending"
+    }
+  ],
+  "auditTrail": [
+    {
+      "time": "09:18",
+      "actor": "Mohan Raj",
+      "action": "Reviewed network exposure",
+      "target": "Global network",
+      "kind": "Review"
+    },
+    {
+      "time": "08:56",
+      "actor": "Ananya S.",
+      "action": "Submitted recovery plan",
+      "target": "RP-041 · Priority freight reroute",
+      "kind": "Recovery"
+    },
+    {
+      "time": "08:42",
+      "actor": "Risk engine",
+      "action": "Raised incident severity",
+      "target": "DI-2084 · Critical",
+      "kind": "System"
+    },
+    {
+      "time": "08:21",
+      "actor": "Rahul M.",
+      "action": "Updated supplier capacity",
+      "target": "Shenzhen Precision Works",
+      "kind": "Update"
+    }
+  ]
+}

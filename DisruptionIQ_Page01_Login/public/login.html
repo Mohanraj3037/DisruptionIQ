@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#171916" />
+  <title>Sign in · DisruptionIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/login-v13.css" />
+</head>
+<body class="login-body">
+  <main class="login-shell">
+    <section class="orbit-panel" aria-label="DisruptionIQ supply chain intelligence">
+  <div class="new-brand"><a class="brand brand-light" href="/login" aria-label="DisruptionIQ home"><span class="brand-mark"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M7 29 17 11l7 11 5-8 5 15H7Z"/><circle cx="17" cy="11" r="2.3"/><circle cx="29" cy="14" r="2.3"/></svg></span><span><b>DisruptionIQ</b><small>SUPPLY CHAIN INTELLIGENCE</small></span></a></div>
+  <div class="hero-copy">
+    <p class="hero-kicker">SUPPLY CHAIN INTELLIGENCE · INDIA</p>
+    <h1>From <em>insight</em><br>to impact.</h1>
+    <p class="hero-lede">See every movement. Anticipate disruption. Keep your network moving.</p>
+    <div class="hero-capabilities" aria-label="Platform capabilities">
+      <span>Track</span><span>Anticipate</span><span>Recover</span>
+    </div>
+  </div>
+</section>
+
+    <section class="login-side">
+      <div class="login-side-top"><span class="login-section-tag">DISRUPTIONIQ WORKSPACE</span><span class="login-secure"><i></i> SECURE SIGN IN</span></div>
+      <div class="login-form-wrap">
+        <div class="login-brand-lockup"><span class="login-brand-symbol">◈</span><span><b>DisruptionIQ</b><small>SUPPLY CHAIN INTELLIGENCE</small></span></div>
+        <p class="eyebrow">WELCOME BACK</p>
+        <h2>Sign in to<br><em>DisruptionIQ.</em></h2>
+        <p class="login-subtitle">Enter your work credentials to open the control tower.</p>
+        <form id="loginForm" class="login-form" method="post" action="/api/auth/login" autocomplete="on">
+          <label for="email">Work email</label>
+          <input id="email" name="email" type="email" autocomplete="username" required />
+          <div class="label-line"><label for="password">Password</label><span></div>
+          <div class="password-wrap"><input id="password" name="password" type="password" autocomplete="current-password" required /><button class="password-toggle" type="button" id="togglePassword" aria-label="Show password">SHOW</button></div>
+          <p class="password-manager-note">Your browser may offer to save your password after you sign in.</p>
+          <button class="login-submit" type="submit"><span>Enter workspace</span><span class="button-arrow">↗</span></button>
+          <p id="loginError" class="form-error" role="alert"></p>
+        </form>
+        
+      </div>
+      <div class="login-side-footer"><span>© 2026 DISRUPTIONIQ</span><span>BUILT FOR THE MOVING WORLD</span></div>
+    </section>
+  </main>
+  <script src="/js/login.js"></script>
+</body>
+</html>

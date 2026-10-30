@@ -1,0 +1,63 @@
+DISRUPTIONIQ 10.0 — FINAL DEMONSTRATION BUILD
+===========================================
+
+FOUR DEVELOPMENT ROLES
+- HUB_INCHARGE: creates and submits recovery plans.
+- RISK_ANALYST: risk analysis and what-if simulations.
+- RECOVERY_MANAGER: independent approval, rejection, change request and simulated execution.
+- CUSTOMER: customer-scoped order portal.
+
+DEMO LOGIN ACCOUNTS
+Hub In-Charge
+  Email: hub@disruptioniq.local
+  Password: Hub@DIQ2026!
+
+Risk Analyst
+  Email: risk@disruptioniq.local
+  Password: Risk@DIQ2026!
+
+Recovery Manager
+  Email: recovery@disruptioniq.local
+  Password: Recover@DIQ2026!
+
+Customer
+  Email: customer@disruptioniq.local
+  Password: Customer@DIQ2026!
+
+All four are development-only accounts. Passwords are stored as scrypt hashes and are not embedded in the login page. Change them with DEMO_HUB_PASSWORD, DEMO_RISK_PASSWORD, DEMO_RECOVERY_PASSWORD and DEMO_CUSTOMER_PASSWORD before distributing this build.
+
+REQUIREMENTS
+- Node.js 22.13 or newer (Node 24 supported).
+- No additional npm install is required for the bundled Node-native backend.
+- Map tiles and full Chart.js experience use existing CDN resources; an offline chart fallback is included.
+
+START ON MACOS / LINUX (PORT 4010)
+1. Open Terminal in this directory.
+2. Run: PORT=4010 npm start
+3. Open: http://localhost:4010
+
+START ON WINDOWS
+1. Open CMD or PowerShell in this directory.
+2. Run: npm start
+3. Open the login URL printed in the terminal.
+
+DATA INTEGRITY
+- The default demo records are synthetic and visibly labelled.
+- Imported spreadsheet approvals/audit records are archived as non-actionable reference records.
+- Hub In-Charge is the maker; Recovery Manager is the independent checker.
+- Audit events are append-only during application runtime.
+- Map points use city-centre coordinates; routes are synthetic city corridors, not live GPS or road navigation.
+- Recovery execution is a simulation and does not trigger real freight, stock or delivery operations.
+
+TEST
+  npm run check
+  npm test
+
+ROLE PAGE ACCESS
+Hub In-Charge: Overview, Shipment Monitoring, Risk Analysis, Recovery Planning, Approval & Audit Trail. Creates and submits drafts; cannot approve own plans.
+Risk Analyst: Overview, Shipment Monitoring, Risk Analysis. Runs scans and simulations; no recovery/admin access.
+Recovery Manager: Overview, Shipment Monitoring, Risk Analysis, Recovery Planning, Approval & Audit Trail. Independently approves/rejects/requests changes and runs simulation-only execution.
+Customer: Customer Portal only, limited to their own linked orders.
+
+NOTIFICATIONS
+Use the bell icon to open the role-scoped feed. New scan, plan submission, decision and execution events refresh the unread badge. Open a notification and choose Mark read; the badge updates.

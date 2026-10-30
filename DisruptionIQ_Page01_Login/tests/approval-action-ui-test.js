@@ -1,0 +1,17 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const app=fs.readFileSync(path.join(root,'public/js/app.js'),'utf8');
+const css=fs.readFileSync(path.join(root,'public/css/styles.css'),'utf8');
+const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+assert.match(app,/canDecide=state\.currentUser\?\.role==='RECOVERY_MANAGER'&&!own/);
+assert.match(app,/You submitted this plan\. Sign out and sign in as the Recovery Manager/);
+assert.match(app,/data-gov-decision=\\?\"Approved/);
+assert.match(app,/\/api\/v1\/recovery-plans\/\$\{plan\}\/decision/);
+assert.match(server,/requireExactRole\(req,res,s,'RECOVERY_MANAGER'\)/);
+assert.match(css,/\.approval-restricted/);
+console.log('PASS approval buttons are shown only to an independent Recovery Manager');
+console.log('PASS submitting user receives a clear sign-in instruction instead of dead-looking disabled buttons');
+console.log('PASS decision request targets the protected backend endpoint');

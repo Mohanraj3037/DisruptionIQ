@@ -1,0 +1,24 @@
+{
+  "name": "disruptioniq-node-backend",
+  "version": "10.0.0",
+  "private": true,
+  "description": "DisruptionIQ four-role supply-chain intelligence and recovery simulation platform.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning scripts/bootstrap.js && node --disable-warning=ExperimentalWarning server.js",
+    "dev": "node --disable-warning=ExperimentalWarning scripts/bootstrap.js && node --watch --disable-warning=ExperimentalWarning server.js",
+    "check": "node scripts/check.js",
+    "test:ports": "node tests/port-safety-test.js",
+    "test": "node --disable-warning=ExperimentalWarning tests/smoke-test.js && node --disable-warning=ExperimentalWarning tests/page06-test.js && node --disable-warning=ExperimentalWarning tests/page07-test.js && node --disable-warning=ExperimentalWarning tests/page08-test.js && node --disable-warning=ExperimentalWarning tests/page09-test.js && node --disable-warning=ExperimentalWarning tests/page10-test.js && node --disable-warning=ExperimentalWarning tests/navigation-test.js && node --disable-warning=ExperimentalWarning tests/intelligence-test.js && node tests/port-safety-test.js && node tests/chart-fallback-test.js && node tests/ui-density-chart-test.js && node --disable-warning=ExperimentalWarning tests/workspace-navigation-test.js && node --disable-warning=ExperimentalWarning tests/governance-demo-test.js && node tests/approval-action-ui-test.js",
+    "import:sqlite": "node scripts/import-sqlite.js",
+    "import:expanded-dataset": "node --disable-warning=ExperimentalWarning scripts/import-expanded-dataset.js",
+    "test:dataset": "node --disable-warning=ExperimentalWarning tests/dataset-import-test.js",
+    "user:create-hub": "node --disable-warning=ExperimentalWarning scripts/create-hub-user.js",
+    "bootstrap": "node --disable-warning=ExperimentalWarning scripts/bootstrap.js",
+    "test:governance": "node --disable-warning=ExperimentalWarning tests/governance-demo-test.js"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "license": "UNLICENSED"
+}

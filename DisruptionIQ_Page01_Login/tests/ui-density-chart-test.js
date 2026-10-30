@@ -1,0 +1,18 @@
+'use strict';
+const fs=require('node:fs');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..');
+const html=fs.readFileSync(path.join(root,'public/app.html'),'utf8');
+const css=fs.readFileSync(path.join(root,'public/css/styles.css'),'utf8');
+const app=fs.readFileSync(path.join(root,'public/js/app.js'),'utf8');
+const fallback=fs.readFileSync(path.join(root,'public/js/chart-fallback.js'),'utf8');
+assert.match(html,/chart\.js@4\.4\.7\/dist\/chart\.umd\.min\.js/,'Chart.js is loaded before local fallback');
+assert.match(html,/id="overviewRiskComposition"/,'overview risk composition chart exists');
+assert.match(html,/id="overviewSupplierExposure"/,'overview supplier exposure chart exists');
+assert.match(app,/new Chart\(\$\('#overviewRiskComposition'\)/,'risk composition chart is initialized');
+assert.match(app,/new Chart\(\$\('#overviewSupplierExposure'\)/,'supplier exposure chart is initialized');
+assert.match(css,/min-height:0!important;height:auto!important/,'scroll sections no longer occupy a full viewport');
+assert.match(css,/workspace-subnav[\s\S]*border-radius:999px/,'workspace navigation uses compact pill styling');
+assert.match(fallback,/append\(el\('title'/,'offline fallback exposes hover/focus values');
+console.log('PASS compact workspace layout, Chart.js interactivity, supplemental analytics and offline chart inspection');
