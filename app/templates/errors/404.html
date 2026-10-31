@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}404 Not Found{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 60vh;">
+  <div class="col-12 col-md-8 col-lg-6 text-center">
+    <div class="control-card p-5">
+      <div class="mb-3">
+        <i class="bi bi-compass text-warning" style="font-size: 3.5rem;"></i>
+      </div>
+      <h2 class="h4 text-white fw-bold mb-2">404 &bull; Page Not Found</h2>
+      <p class="text-secondary mb-4" style="font-size: 0.95rem;">
+        The requested logistics control route or resource could not be found.
+      </p>
+      <div class="d-flex justify-content-center gap-3">
+        <a href="{{ url_for('dashboard.index') }}" class="btn btn-control-gold">
+          <i class="bi bi-arrow-left me-1"></i> Return to Control Tower
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

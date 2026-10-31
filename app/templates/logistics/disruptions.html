@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Active Disruptions Monitor{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-shield-exclamation text-danger me-2"></i>Active Disruption Monitoring &amp; Incident Control
+    </h2>
+    <p class="text-secondary small mb-0">
+      Real-time freight delay intelligence, inventory shortage classifications and affected customer order linkage.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('webhooks.simulator') }}" class="btn btn-sm btn-outline-warning">
+      <i class="bi bi-broadcast me-1"></i> Trigger Carrier Event
+    </a>
+  </div>
+</div>
+
+<!-- Disruption Telemetry Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--danger);">
+      <div class="kpi-title">Active Incidents</div>
+      <div class="kpi-value text-danger font-monospace">{{ counts.active }}</div>
+      <div class="kpi-subtext text-secondary">Requiring operational monitoring</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--danger);">
+      <div class="kpi-title">Confirmed Shortages</div>
+      <div class="kpi-value text-danger font-monospace">{{ counts.confirmed_shortages }}</div>
+      <div class="kpi-subtext text-secondary">Immediate stock deficit</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--control-gold);">
+      <div class="kpi-title">Potential Shortages</div>
+      <div class="kpi-value text-warning font-monospace">{{ counts.potential_shortages }}</div>
+      <div class="kpi-subtext text-secondary">Inbound freight delayed</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--primary-accent);">
+      <div class="kpi-title">Critical Severity</div>
+      <div class="kpi-value text-white font-monospace">{{ counts.critical }}</div>
+      <div class="kpi-subtext text-secondary">Tier 1 SLA breach risk</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters and Disruption Table -->
+<div class="control-card">
+  <div class="control-card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+    <form method="GET" action="{{ url_for('logistics.disruptions') }}" class="d-flex flex-wrap align-items-center gap-2">
+      <!-- Severity Filter -->
+      <select name="severity" class="form-select form-select-sm bg-dark text-white border-secondary" style="width: auto;">
+        <option value="all" {% if current_severity == 'all' or not current_severity %}selected{% endif %}>All Severities</option>
+        <option value="critical" {% if current_severity == 'critical' %}selected{% endif %}>Critical</option>
+        <option value="high" {% if current_severity == 'high' %}selected{% endif %}>High</option>
+        <option value="medium" {% if current_severity == 'medium' %}selected{% endif %}>Medium</option>
+        <option value="low" {% if current_severity == 'low' %}selected{% endif %}>Low</option>
+      </select>
+
+      <!-- Status Filter -->
+      <select name="status" class="form-select form-select-sm bg-dark text-white border-secondary" style="width: auto;">
+        <option value="all" {% if current_status == 'all' or not current_status %}selected{% endif %}>All Incident Statuses</option>
+        <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
+        <option value="monitoring" {% if current_status == 'monitoring' %}selected{% endif %}>Monitoring</option>
+        <option value="mitigated" {% if current_status == 'mitigated' %}selected{% endif %}>Mitigated</option>
+        <option value="resolved" {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
+      </select>
+
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Filter</button>
+      {% if (current_severity and current_severity != 'all') or (current_status and current_status != 'all') %}
+      <a href="{{ url_for('logistics.disruptions') }}" class="btn btn-sm btn-outline-danger">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="table-responsive">
+    {% if disruptions %}
+    <table class="table table-control align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Incident Code</th>
+          <th>Disruption Title &amp; Cause</th>
+          <th>Severity</th>
+          <th>Shortage Classification</th>
+          <th>Location / Node</th>
+          <th>Delay Impact</th>
+          <th>Linked Shipment</th>
+          <th>Affected Orders</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in disruptions %}
+        <tr>
+          <td>
+            <span class="text-white font-monospace fw-bold">{{ d.disruption_code }}</span>
+          </td>
+          <td>
+            <div class="text-white fw-semibold">{{ d.title }}</div>
+            <div class="text-muted small">Type: {{ d.disruption_type }} &bull; Detected {{ d.detected_at.strftime('%Y-%m-%d %H:%M') }}</div>
+          </td>
+          <td>
+            {% if d.severity == 'Critical' %}
+              <span class="badge bg-danger"><i class="bi bi-fire me-1"></i>Critical</span>
+            {% elif d.severity == 'High' %}
+              <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle-fill me-1"></i>High</span>
+            {% elif d.severity == 'Medium' %}
+              <span class="badge bg-primary">Medium</span>
+            {% else %}
+              <span class="badge bg-secondary">Low</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if d.shortage_category == 'Confirmed Shortage' %}
+              <span class="badge bg-danger" title="Warehouse lacks on-hand inventory to fulfill orders">
+                <i class="bi bi-x-circle-fill me-1"></i>Confirmed Shortage
+              </span>
+            {% elif d.shortage_category == 'Potential Shortage' %}
+              <span class="badge bg-warning text-dark" title="Inbound stock is delayed; stockout imminent if not expedited">
+                <i class="bi bi-clock-history me-1"></i>Potential Shortage
+              </span>
+            {% else %}
+              <span class="badge bg-dark text-secondary border border-secondary">Transit Delay</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="text-secondary small">
+              <i class="bi bi-geo-alt text-danger me-1"></i>{{ d.location }}
+            </div>
+            {% if d.warehouse %}
+            <div class="small text-info font-monospace">{{ d.warehouse.code }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <span class="text-white font-monospace fw-bold">+{{ d.delay_hours }} hrs</span>
+            {% if d.estimated_financial_impact %}
+            <div class="text-danger small font-monospace">${{ "{:,.0f}".format(d.estimated_financial_impact) }}</div>
+            {% endif %}
+          </td>
+          <td>
+            {% if d.shipment %}
+              <a href="{{ url_for('logistics.shipments', q=d.shipment.tracking_number) }}" class="text-warning font-monospace small text-decoration-none" title="View Shipment">
+                <i class="bi bi-box-arrow-up-right me-1"></i>{{ d.shipment.tracking_number }}
+              </a>
+              <div class="text-muted small">{{ d.shipment.carrier }}</div>
+            {% else %}
+              <span class="text-muted small">Warehouse-Level</span>
+            {% endif %}
+          </td>
+          <td>
+            {% set ord_count = d.affected_orders.count() %}
+            {% if ord_count > 0 %}
+              <span class="badge bg-danger font-monospace fw-bold">
+                <i class="bi bi-people-fill me-1"></i>{{ ord_count }} Orders
+              </span>
+            {% else %}
+              <span class="badge bg-dark text-secondary border border-secondary">0 Orders</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('logistics.disruption_detail', disruption_id=d.id) }}" class="btn btn-sm btn-outline-warning py-1 px-2" style="font-size: 0.78rem;">
+              <i class="bi bi-eye me-1"></i> Inspect
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state p-5 text-center">
+      <i class="bi bi-shield-check text-success fs-1 mb-2"></i>
+      <h4 class="text-white">No Active Disruptions Found</h4>
+      <p class="text-secondary">All monitored transport routes and warehouse facilities are currently operating normally.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

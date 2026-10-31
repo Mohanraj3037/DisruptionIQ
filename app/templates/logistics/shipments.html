@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Shipments &amp; In-Transit Cargo{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-truck text-warning me-2"></i>Shipments &amp; In-Transit Cargo
+    </h2>
+    <p class="text-secondary small mb-0">
+      Multi-modal freight tracking, carrier status telemetry, real-time arrival estimates, and delay alerts.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('webhooks.simulator') }}" class="btn btn-sm btn-outline-warning">
+      <i class="bi bi-broadcast me-1"></i> Simulate Carrier Webhook
+    </a>
+    <a href="{{ url_for('data_import.index') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-file-earmark-arrow-up me-1"></i> Import Shipments
+    </a>
+  </div>
+</div>
+
+<!-- Status Filter Tabs & Search -->
+<div class="control-card mb-4">
+  <div class="control-card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+    <ul class="nav nav-pills gap-1">
+      <li class="nav-item">
+        <a class="nav-link py-1 px-3 small {% if current_status == 'all' or not current_status %}active bg-warning text-dark fw-bold{% else %}text-secondary{% endif %}" 
+           href="{{ url_for('logistics.shipments', status='all', q=search_q) }}">
+          All Shipments ({{ counts.all }})
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link py-1 px-3 small {% if current_status == 'in_transit' %}active bg-primary text-white fw-bold{% else %}text-secondary{% endif %}" 
+           href="{{ url_for('logistics.shipments', status='in_transit', q=search_q) }}">
+          In Transit ({{ counts.in_transit }})
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link py-1 px-3 small {% if current_status == 'delayed' %}active bg-danger text-white fw-bold{% else %}text-secondary{% endif %}" 
+           href="{{ url_for('logistics.shipments', status='delayed', q=search_q) }}">
+          Delayed ({{ counts.delayed }})
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link py-1 px-3 small {% if current_status == 'scheduled' %}active bg-info text-dark fw-bold{% else %}text-secondary{% endif %}" 
+           href="{{ url_for('logistics.shipments', status='scheduled', q=search_q) }}">
+          Scheduled ({{ counts.scheduled }})
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link py-1 px-3 small {% if current_status == 'delivered' %}active bg-success text-white fw-bold{% else %}text-secondary{% endif %}" 
+           href="{{ url_for('logistics.shipments', status='delivered', q=search_q) }}">
+          Delivered ({{ counts.delivered }})
+        </a>
+      </li>
+    </ul>
+
+    <form method="GET" action="{{ url_for('logistics.shipments') }}" class="d-flex gap-2">
+      <input type="hidden" name="status" value="{{ current_status }}">
+      <input type="text" name="q" value="{{ search_q }}" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Search tracking, carrier, city..." style="width: 240px;">
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Search</button>
+      {% if search_q %}
+      <a href="{{ url_for('logistics.shipments', status=current_status) }}" class="btn btn-sm btn-outline-danger">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="table-responsive">
+    {% if shipments %}
+    <table class="table table-control align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Tracking #</th>
+          <th>Carrier &amp; Mode</th>
+          <th>Origin &rarr; Destination</th>
+          <th>Supplier</th>
+          <th>Cargo Items</th>
+          <th>Estimated Arrival (ETA)</th>
+          <th>Status</th>
+          <th>Disruptions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in shipments %}
+        <tr>
+          <td>
+            <span class="text-white font-monospace fw-bold">{{ s.tracking_number }}</span>
+          </td>
+          <td>
+            <div class="text-white fw-semibold">{{ s.carrier }}</div>
+            <div class="text-secondary small">
+              {% if s.transport_mode == 'Ocean' %}
+                <i class="bi bi-water text-info me-1"></i>Ocean Freight
+              {% elif s.transport_mode == 'Air' %}
+                <i class="bi bi-airplane text-warning me-1"></i>Air Cargo
+              {% elif s.transport_mode == 'Rail' %}
+                <i class="bi bi-train-front text-primary me-1"></i>Intermodal Rail
+              {% else %}
+                <i class="bi bi-truck text-secondary me-1"></i>Road Freight
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <div class="text-secondary small">{{ s.origin_city }}</div>
+            <div class="text-white small fw-bold">
+              <i class="bi bi-arrow-right-short text-warning"></i>
+              {{ s.destination_warehouse.name if s.destination_warehouse else s.destination_city }}
+              <span class="badge bg-dark text-info border border-secondary">{{ s.destination_warehouse.code if s.destination_warehouse else '' }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="text-secondary small">{{ s.supplier.name if s.supplier else 'Direct Transfer' }}</span>
+          </td>
+          <td>
+            {% if s.items %}
+              {% for it in s.items %}
+              <div class="small">
+                <span class="text-warning font-monospace">{{ it.sku }}</span>:
+                <span class="text-white fw-bold">{{ it.quantity }}</span> units
+              </div>
+              {% endfor %}
+            {% else %}
+              <span class="text-muted small">General Cargo</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="text-white small">
+              {{ s.estimated_arrival.strftime('%Y-%m-%d %H:%M') if s.estimated_arrival else 'TBD' }}
+            </div>
+            {% if s.actual_arrival %}
+            <div class="text-success small" style="font-size: 0.75rem;">
+              <i class="bi bi-check-circle me-1"></i>Delivered: {{ s.actual_arrival.strftime('%Y-%m-%d') }}
+            </div>
+            {% endif %}
+          </td>
+          <td>
+            {% if s.status == 'Delayed' %}
+              <span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Delayed</span>
+            {% elif s.status == 'In Transit' %}
+              <span class="badge bg-primary"><i class="bi bi-send-fill me-1"></i>In Transit</span>
+            {% elif s.status == 'Delivered' %}
+              <span class="badge bg-success"><i class="bi bi-check2 me-1"></i>Delivered</span>
+            {% elif s.status == 'Scheduled' %}
+              <span class="badge bg-info text-dark"><i class="bi bi-calendar3 me-1"></i>Scheduled</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ s.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% set active_disruptions = s.disruptions.filter_by(status='Active').all() %}
+            {% if active_disruptions %}
+              {% for d in active_disruptions %}
+              <a href="{{ url_for('logistics.disruption_detail', disruption_id=d.id) }}" class="badge bg-danger text-white text-decoration-none d-inline-flex align-items-center gap-1 mb-1" title="View Disruption Details">
+                <i class="bi bi-shield-exclamation"></i>
+                {{ d.disruption_code }} (+{{ d.delay_hours }}h)
+              </a>
+              {% endfor %}
+            {% else %}
+              <span class="badge bg-dark text-secondary border border-secondary">None</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state p-5 text-center">
+      <i class="bi bi-truck text-muted fs-1 mb-2"></i>
+      <h4 class="text-white">No Shipments Found</h4>
+      <p class="text-secondary">No shipment records matched your search query or filter.</p>
+      <a href="{{ url_for('logistics.shipments') }}" class="btn btn-sm btn-outline-warning">View All Shipments</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

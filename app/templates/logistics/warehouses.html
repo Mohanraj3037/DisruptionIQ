@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Warehouses &amp; Distribution Hubs{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-diagram-3 text-warning me-2"></i>Distribution Hubs &amp; Warehouses
+    </h2>
+    <p class="text-secondary small mb-0">
+      Multi-echelon facility utilization, inventory valuations and active inbound transit gates.
+    </p>
+  </div>
+  <div>
+    <span class="badge bg-dark text-secondary" style="border: 1px solid var(--border-subtle); padding: 0.45rem 0.75rem;">
+      Facilities: <span class="text-white fw-bold">{{ warehouses|length }} Active</span>
+    </span>
+  </div>
+</div>
+
+<div class="row g-4">
+  {% for wh in warehouses %}
+  {% set st = stats[wh.id] %}
+  <div class="col-12 col-lg-4">
+    <div class="control-card h-100">
+      <div class="control-card-header">
+        <h3 class="control-card-title text-white">
+          <i class="bi bi-box-seam text-warning"></i>{{ wh.code }}
+        </h3>
+        <span class="badge bg-success" style="font-size: 0.7rem;">Operational</span>
+      </div>
+      <div class="control-card-body">
+        <h5 class="text-white mb-1">{{ wh.name }}</h5>
+        <p class="text-secondary small mb-3">
+          <i class="bi bi-geo-alt text-danger me-1"></i>{{ wh.location }}
+        </p>
+
+        <!-- Capacity Utilization Progress Bar -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between small text-secondary mb-1">
+            <span>Capacity Utilization</span>
+            <span class="text-white fw-bold">{{ (wh.current_utilization * 100)|round|int }}%</span>
+          </div>
+          <div class="progress" style="height: 8px; background-color: var(--bg-slate-light);">
+            <div class="progress-bar {% if wh.current_utilization > 0.85 %}bg-danger{% elif wh.current_utilization > 0.70 %}bg-warning text-dark{% else %}bg-success{% endif %}" 
+                 role="progressbar" style="width: {{ (wh.current_utilization * 100)|round|int }}%"></div>
+          </div>
+          <div class="d-flex justify-content-between text-muted" style="font-size: 0.7rem; margin-top: 4px;">
+            <span>0 m²</span>
+            <span>{{ wh.capacity_sqm|round|int }} m² max</span>
+          </div>
+        </div>
+
+        <div class="bg-dark p-3 rounded" style="border: 1px solid var(--border-subtle);">
+          <div class="d-flex justify-content-between py-1 border-bottom" style="border-color: rgba(255,255,255,0.05) !important; font-size: 0.82rem;">
+            <span class="text-secondary">Stocked SKUs:</span>
+            <span class="text-white fw-bold">{{ st.sku_count }} distinct</span>
+          </div>
+          <div class="d-flex justify-content-between py-1 border-bottom" style="border-color: rgba(255,255,255,0.05) !important; font-size: 0.82rem;">
+            <span class="text-secondary">Total Units On Hand:</span>
+            <span class="text-white font-monospace">{{ "{:,}".format(st.total_units) }}</span>
+          </div>
+          <div class="d-flex justify-content-between py-1 border-bottom" style="border-color: rgba(255,255,255,0.05) !important; font-size: 0.82rem;">
+            <span class="text-secondary">Inventory Valuation:</span>
+            <span class="text-warning font-monospace fw-bold">${{ "{:,.2f}".format(st.total_value) }}</span>
+          </div>
+          <div class="d-flex justify-content-between pt-1" style="font-size: 0.82rem;">
+            <span class="text-secondary">Active Inbound Shipments:</span>
+            <span class="text-info fw-bold">{{ st.active_incoming }} en route</span>
+          </div>
+        </div>
+
+        <div class="mt-3 text-center">
+          <a href="{{ url_for('logistics.inventory', warehouse=wh.code) }}" class="btn btn-sm btn-outline-secondary w-100" style="font-size: 0.8rem;">
+            <i class="bi bi-boxes me-1"></i> View Facility Stock ({{ wh.code }})
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

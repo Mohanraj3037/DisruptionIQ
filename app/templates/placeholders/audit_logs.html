@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}System Audit Logs{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-journal-text text-warning me-2"></i>System Audit Logs
+    </h2>
+    <p class="text-secondary small mb-0">{{ subtitle }}</p>
+  </div>
+  <div>
+    <span class="badge bg-dark text-secondary" style="border: 1px solid var(--border-subtle); padding: 0.45rem 0.75rem;">
+      Total Log Entries: <span class="text-white fw-bold">{{ item_count }}</span>
+    </span>
+  </div>
+</div>
+
+<div class="control-card">
+  <div class="control-card-header">
+    <h3 class="control-card-title">
+      <i class="bi bi-shield-shaded text-info"></i>Governance Audit Trail (Administrator Access)
+    </h3>
+    <span class="badge badge-role">Restricted to Administrator</span>
+  </div>
+  <div class="table-responsive">
+    {% if recent_logs %}
+    <table class="table table-control">
+      <thead>
+        <tr>
+          <th>Timestamp (UTC)</th>
+          <th>Action</th>
+          <th>Entity Type</th>
+          <th>Entity ID</th>
+          <th>Details</th>
+          <th>IP Address</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in recent_logs %}
+        <tr>
+          <td class="text-secondary font-monospace" style="font-size: 0.8rem;">
+            {{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+          </td>
+          <td>
+            {% if 'LOGIN' in log.action %}
+              <span class="badge bg-primary">{{ log.action }}</span>
+            {% elif 'LOGOUT' in log.action %}
+              <span class="badge bg-secondary">{{ log.action }}</span>
+            {% elif 'CREATE' in log.action %}
+              <span class="badge bg-success">{{ log.action }}</span>
+            {% else %}
+              <span class="badge bg-dark text-warning">{{ log.action }}</span>
+            {% endif %}
+          </td>
+          <td class="text-white">{{ log.entity_type }}</td>
+          <td class="text-secondary font-monospace">{{ log.entity_id or '—' }}</td>
+          <td class="text-secondary">{{ log.details or '—' }}</td>
+          <td class="text-secondary font-monospace" style="font-size: 0.8rem;">{{ log.ip_address or 'Localhost' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-journal-check text-muted"></i>
+      <h4>No Audit Events Recorded Yet</h4>
+      <p>Audit events will automatically appear here as users log in, perform approvals, and interact with the system.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

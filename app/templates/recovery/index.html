@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Recovery Plans &amp; Mitigation{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-shield-check text-warning me-2"></i>Recovery Plans &amp; Mitigation
+    </h2>
+    <p class="text-secondary small mb-0">
+      Multi-scenario mitigation strategies, deterministic trade-off analysis, role-based approval governance, and safe simulated execution.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('recovery.api_recovery_plans') }}" target="_blank" class="btn btn-sm btn-outline-info">
+      <i class="bi bi-code-slash me-1"></i> JSON API
+    </a>
+    <a href="{{ url_for('recovery.approvals') }}" class="btn btn-sm btn-outline-warning">
+      <i class="bi bi-check2-circle me-1"></i> Approval Queue ({{ counts.pending }})
+    </a>
+  </div>
+</div>
+
+<!-- KPI Metric Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--control-gold);">
+      <div>
+        <div class="kpi-label">Pending Approvals</div>
+        <div class="kpi-value text-warning">{{ counts.pending }}</div>
+        <div class="kpi-subtext text-warning">Awaiting Governance Review</div>
+      </div>
+      <div class="kpi-icon-box icon-gold">
+        <i class="bi bi-hourglass-split"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--accent-teal);">
+      <div>
+        <div class="kpi-label">Approved &bull; Ready</div>
+        <div class="kpi-value text-info">{{ counts.approved }}</div>
+        <div class="kpi-subtext text-info">Awaiting Execution Confirmation</div>
+      </div>
+      <div class="kpi-icon-box icon-teal">
+        <i class="bi bi-check-circle-fill"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--success);">
+      <div>
+        <div class="kpi-label">Executed (Simulated)</div>
+        <div class="kpi-value text-success">{{ counts.executed }}</div>
+        <div class="kpi-subtext text-success">Completed Interventions</div>
+      </div>
+      <div class="kpi-icon-box icon-slate">
+        <i class="bi bi-cpu-fill"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="kpi-card" style="border-left: 3px solid var(--primary-accent);">
+      <div>
+        <div class="kpi-label">Total Recovery Plans</div>
+        <div class="kpi-value text-white">{{ counts.total }}</div>
+        <div class="kpi-subtext text-secondary">Drafts &bull; Active &bull; Archived</div>
+      </div>
+      <div class="kpi-icon-box icon-slate">
+        <i class="bi bi-collection-fill"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Candidate Recommendation Generator Card -->
+<div class="control-card mb-4" style="border-left: 4px solid var(--control-gold);">
+  <div class="control-card-header d-flex justify-content-between align-items-center">
+    <h3 class="control-card-title text-white">
+      <i class="bi bi-magic text-warning"></i>Generate Candidate Recovery Options
+    </h3>
+    <span class="badge bg-dark text-warning border border-secondary" style="font-size: 0.7rem;">
+      Deterministic Multi-Criteria Solver
+    </span>
+  </div>
+  <div class="control-card-body p-3">
+    <p class="text-secondary small mb-3">
+      Select an active disruption to trigger multi-echelon candidate option generation (Inter-Warehouse Transfers, Alternative Suppliers, Expedited Freight, or Order Reprioritization):
+    </p>
+    <div class="row g-2 align-items-center">
+      <div class="col-12 col-md-9">
+        <select class="form-select form-select-sm bg-dark text-white border-secondary" id="generatorDisruptionSelect">
+          <option value="">-- Choose an Active Disruption --</option>
+          {% for d in active_disruptions %}
+          <option value="{{ d.id }}">
+            {{ d.disruption_code }} &mdash; {{ d.title }} [{{ d.severity }} &bull; {{ d.shortage_category }}]
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <button type="button" class="btn btn-sm btn-control-gold w-100" onclick="goToComparison()">
+          <i class="bi bi-sliders me-1"></i> Compare Scenarios &rarr;
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters and Plans Table -->
+<div class="control-card">
+  <div class="control-card-header d-flex justify-content-between align-items-center">
+    <h3 class="control-card-title text-white">
+      <i class="bi bi-table text-warning"></i>Formal Recovery Plans ({{ plans|length }})
+    </h3>
+    <div class="d-flex gap-2">
+      <form method="GET" action="{{ url_for('recovery.index') }}" class="d-flex gap-2">
+        <select class="form-select form-select-sm bg-dark text-white border-secondary" name="status" onchange="this.form.submit()">
+          <option value="all" {% if current_status == 'all' %}selected{% endif %}>All Statuses</option>
+          <option value="Draft" {% if current_status == 'Draft' %}selected{% endif %}>Draft</option>
+          <option value="Pending Approval" {% if current_status == 'Pending Approval' %}selected{% endif %}>Pending Approval</option>
+          <option value="Approved" {% if current_status == 'Approved' %}selected{% endif %}>Approved</option>
+          <option value="Executed" {% if current_status == 'Executed' %}selected{% endif %}>Executed</option>
+          <option value="Rejected" {% if current_status == 'Rejected' %}selected{% endif %}>Rejected</option>
+          <option value="Changes Requested" {% if current_status == 'Changes Requested' %}selected{% endif %}>Changes Requested</option>
+        </select>
+        {% if current_status != 'all' or current_disruption_id %}
+        <a href="{{ url_for('recovery.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset Filters">
+          <i class="bi bi-x-circle"></i>
+        </a>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    {% if plans %}
+    <table class="table table-control align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Plan Code</th>
+          <th>Title &amp; Disruption</th>
+          <th>Strategy Type</th>
+          <th>SKU &amp; Qty</th>
+          <th>Route / Hubs</th>
+          <th class="text-end">Est. Cost</th>
+          <th>Delay Saved</th>
+          <th>Status</th>
+          <th>Version</th>
+          <th class="text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in plans %}
+        <tr>
+          <td>
+            <a href="{{ url_for('recovery.plan_detail', plan_id=p.id) }}" class="text-white font-monospace fw-bold text-decoration-none">
+              {{ p.plan_code }}
+            </a>
+          </td>
+          <td>
+            <div class="text-white fw-semibold small">{{ p.title[:45] }}</div>
+            <div class="small">
+              <a href="{{ url_for('logistics.disruption_detail', disruption_id=p.disruption_id) }}" class="text-info font-monospace text-decoration-none" style="font-size: 0.72rem;">
+                {{ p.disruption.disruption_code if p.disruption else 'N/A' }}
+              </a>
+            </div>
+          </td>
+          <td>
+            <span class="badge bg-dark text-warning border border-secondary" style="font-size: 0.7rem;">
+              {{ p.strategy_type }}
+            </span>
+          </td>
+          <td>
+            <span class="text-warning font-monospace small fw-bold">{{ p.sku or 'N/A' }}</span>
+            <div class="text-secondary small">{{ p.quantity }} units</div>
+          </td>
+          <td>
+            <div class="text-white small">{{ p.source_location or 'Network' }} &rarr;</div>
+            <div class="text-secondary small">{{ p.destination_location or 'Destination Hub' }}</div>
+          </td>
+          <td class="text-end font-monospace text-white small">
+            ${{ "{:,.2f}".format(p.estimated_cost) }}
+          </td>
+          <td>
+            <span class="text-success font-monospace small fw-bold">
+              -{{ p.estimated_delay_reduction_hours }}h
+            </span>
+          </td>
+          <td>
+            {% if p.status == 'Draft' %}
+              <span class="badge bg-secondary">Draft</span>
+            {% elif p.status == 'Pending Approval' %}
+              <span class="badge bg-warning text-dark">Pending Approval</span>
+            {% elif p.status == 'Approved' %}
+              <span class="badge bg-info text-dark">Approved</span>
+            {% elif p.status == 'Execution Ready' %}
+              <span class="badge bg-primary">Execution Ready</span>
+            {% elif p.status == 'Executed' %}
+              <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Executed (Sim)</span>
+            {% elif p.status == 'Rejected' %}
+              <span class="badge bg-danger">Rejected</span>
+            {% elif p.status == 'Changes Requested' %}
+              <span class="badge bg-warning text-dark">Changes Requested</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ p.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge bg-dark text-secondary font-monospace" style="font-size: 0.68rem;">
+              v{{ p.version }}
+            </span>
+          </td>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm">
+              <a href="{{ url_for('recovery.plan_detail', plan_id=p.id) }}" class="btn btn-outline-info py-0 px-2" style="font-size: 0.72rem;">
+                Review
+              </a>
+              {% if p.status == 'Approved' %}
+              <a href="{{ url_for('recovery.confirm_execution', plan_id=p.id) }}" class="btn btn-control-gold py-0 px-2" style="font-size: 0.72rem;">
+                Execute
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state p-5 text-center">
+      <i class="bi bi-shield-slash text-secondary display-4 mb-3"></i>
+      <h5 class="text-white">No Recovery Plans Stored</h5>
+      <p class="text-secondary small mb-3">
+        Generate candidate recovery options above or select an active disruption to construct a formal mitigation plan.
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function goToComparison() {
+  const sel = document.getElementById('generatorDisruptionSelect');
+  const disId = sel.value;
+  if (!disId) {
+    alert('Please select an active disruption first.');
+    return;
+  }
+  window.location.href = "{{ url_for('recovery.index') }}/compare/" + disId;
+}
+</script>
+{% endblock %}

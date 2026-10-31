@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm Simulated Execution — {{ plan.plan_code }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge bg-success-subtle text-success border border-success-subtle">Approved &amp; Ready</span>
+      <span class="badge bg-secondary-subtle text-secondary font-monospace">v{{ plan.version }}</span>
+      <h2 class="h4 fw-bold text-white mb-0">Simulated Execution Confirmation</h2>
+    </div>
+    <div class="text-secondary small">
+      Plan: <span class="text-info fw-semibold">{{ plan.plan_code }}</span> &bull; {{ plan.title }}
+    </div>
+  </div>
+
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('recovery.plan_detail', plan_id=plan.id) }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i> Cancel &amp; Return to Plan
+    </a>
+  </div>
+</div>
+
+<!-- Simulation Guard Banner -->
+<div class="alert alert-info border-info d-flex align-items-start gap-3 mb-4 p-3" style="background-color: rgba(13, 202, 240, 0.08);">
+  <i class="bi bi-shield-check text-info fs-3"></i>
+  <div>
+    <h6 class="fw-bold text-info mb-1">Safe Simulated Sandbox Mode Active</h6>
+    <p class="small text-light mb-0">
+      Execution updates the DisruptionIQ local database records atomically. <strong>No physical freight carriers are dispatched, no real purchase orders are placed with external vendors, and no monetary transactions are created.</strong> All operations are idempotently tracked and auditable.
+    </p>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-7">
+    <!-- Pre-Flight Verification Checklist -->
+    <div class="card border-0 shadow-sm mb-4" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+      <div class="card-header bg-transparent py-3" style="border-bottom: 1px solid var(--border-color, #2a2f3e);">
+        <h5 class="card-title text-white mb-0 fs-6 fw-semibold">
+          <i class="bi bi-check2-all text-success me-2"></i>Pre-Flight Constraint Validation
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="list-group list-group-flush bg-transparent">
+          <div class="list-group-item bg-transparent text-white px-0 py-2 d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-25">
+            <div>
+              <span class="fw-semibold text-light small">Governance Approval Status</span>
+              <div class="text-secondary small">Plan must be in Approved state with matching snapshot version.</div>
+            </div>
+            <span class="badge bg-success-subtle text-success border border-success-subtle">
+              <i class="bi bi-check-lg me-1"></i> Approved (v{{ plan.approval_version }})
+            </span>
+          </div>
+
+          <div class="list-group-item bg-transparent text-white px-0 py-2 d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-25">
+            <div>
+              <span class="fw-semibold text-light small">Operator Authorization</span>
+              <div class="text-secondary small">Acting user: {{ current_user.username }} ({{ current_user.role }}).</div>
+            </div>
+            <span class="badge bg-success-subtle text-success border border-success-subtle">
+              <i class="bi bi-check-lg me-1"></i> Authorized Role
+            </span>
+          </div>
+
+          <div class="list-group-item bg-transparent text-white px-0 py-2 d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-25">
+            <div>
+              <span class="fw-semibold text-light small">Duplicate Execution Guard</span>
+              <div class="text-secondary small">Single-use idempotency key assigned for atomic execution.</div>
+            </div>
+            <span class="badge bg-info-subtle text-info border border-info-subtle font-monospace small">
+              {{ idempotency_key[:18] }}...
+            </span>
+          </div>
+
+          <div class="list-group-item bg-transparent text-white px-0 py-2 d-flex justify-content-between align-items-center">
+            <div>
+              <span class="fw-semibold text-light small">Target Logistics Asset</span>
+              <div class="text-secondary small">SKU: <code>{{ plan.sku or 'General' }}</code> &bull; Quantity: {{ plan.quantity }} units</div>
+            </div>
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+              ${{ "%.2f"|format(plan.estimated_cost) }} Est.
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Projected Stock Impact (for Warehouse Transfers) -->
+    {% if plan.strategy_type == 'Inter-Warehouse Stock Transfer' %}
+      <div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+        <div class="card-header bg-transparent py-3" style="border-bottom: 1px solid var(--border-color, #2a2f3e);">
+          <h5 class="card-title text-white mb-0 fs-6 fw-semibold">
+            <i class="bi bi-arrow-left-right text-info me-2"></i>Projected Inventory Balance Changes
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-white" style="--bs-table-bg: transparent;">
+              <thead>
+                <tr class="text-secondary text-uppercase small" style="border-bottom: 1px solid var(--border-color, #2a2f3e); font-size: 0.75rem;">
+                  <th class="ps-3 py-3">Warehouse / Hub</th>
+                  <th>Current On-Hand</th>
+                  <th>Reserved / Safety</th>
+                  <th>Simulation Delta</th>
+                  <th class="text-end pe-3">Projected On-Hand</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                  <td class="ps-3 py-3">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">Source</span>
+                    <strong>{{ plan.source_warehouse.warehouse_code if plan.source_warehouse else 'Source' }}</strong>
+                  </td>
+                  <td>{{ src_inv.quantity_on_hand if src_inv else 0 }} units</td>
+                  <td class="small text-secondary">
+                    {{ src_inv.quantity_reserved if src_inv else 0 }} res / {{ src_inv.safety_stock if src_inv else 0 }} safety
+                  </td>
+                  <td class="text-danger fw-bold">-{{ plan.quantity }} units</td>
+                  <td class="text-end pe-3 fw-bold text-light">
+                    {{ (src_inv.quantity_on_hand - plan.quantity) if src_inv else 0 }} units
+                  </td>
+                </tr>
+                <tr>
+                  <td class="ps-3 py-3">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle me-1">Destination</span>
+                    <strong>{{ plan.destination_warehouse.warehouse_code if plan.destination_warehouse else 'Dest' }}</strong>
+                  </td>
+                  <td>{{ dest_inv.quantity_on_hand if dest_inv else 0 }} units</td>
+                  <td class="small text-secondary">
+                    {{ dest_inv.quantity_reserved if dest_inv else 0 }} res / {{ dest_inv.safety_stock if dest_inv else 0 }} safety
+                  </td>
+                  <td class="text-success fw-bold">+{{ plan.quantity }} units</td>
+                  <td class="text-end pe-3 fw-bold text-success">
+                    {{ ((dest_inv.quantity_on_hand if dest_inv else 0) + plan.quantity) }} units
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-5">
+    <!-- Execution Form Card -->
+    <div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #1e222d); border: 1px solid var(--border-color, #2a2f3e) !important;">
+      <div class="card-header bg-transparent py-3" style="border-bottom: 1px solid var(--border-color, #2a2f3e);">
+        <h5 class="card-title text-white mb-0 fs-6 fw-semibold">
+          <i class="bi bi-play-circle text-primary me-2"></i>Explicit Confirmation &amp; Execution
+        </h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('recovery.execute_plan', plan_id=plan.id) }}">
+          <!-- Single-use idempotency key -->
+          <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Execution Operator</label>
+            <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" value="{{ current_user.full_name or current_user.username }} ({{ current_user.role }})" readonly>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Assigned Idempotency Key</label>
+            <input type="text" class="form-control form-control-sm bg-dark font-monospace text-info border-secondary" value="{{ idempotency_key }}" readonly>
+            <div class="form-text text-secondary small">Guarantees safe execution; duplicate calls with this key are rejected.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Execution Notes / Dispatch Telemetry (Optional)</label>
+            <textarea name="execution_notes" class="form-control form-control-sm bg-dark text-white border-secondary" rows="3" placeholder="e.g., Transfer pallet assigned to bay 4. Simulated arrival estimated in 8 hours."></textarea>
+          </div>
+
+          <!-- Mandatory Confirmation Checkbox -->
+          <div class="form-check p-3 rounded mb-4" style="background-color: rgba(255, 193, 7, 0.08); border: 1px solid rgba(255, 193, 7, 0.25);">
+            <input class="form-check-input" type="checkbox" name="confirm_checkbox" value="yes" id="confirmCheckbox" required>
+            <label class="form-check-label small text-light fw-semibold" for="confirmCheckbox">
+              I have inspected the pre-flight checks and stock balances, and explicitly confirm the simulated execution of plan <code class="text-warning">{{ plan.plan_code }}</code>.
+            </label>
+          </div>
+
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary btn-lg fs-6 fw-semibold">
+              <i class="bi bi-play-circle-fill me-1"></i> Execute Simulated Recovery Plan
+            </button>
+            <a href="{{ url_for('recovery.plan_detail', plan_id=plan.id) }}" class="btn btn-sm btn-outline-secondary">
+              Cancel Execution
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

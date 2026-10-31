@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Orders &amp; Fulfillment Queue{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h2 class="h4 fw-bold text-white mb-1">
+      <i class="bi bi-box-seam text-warning me-2"></i>Customer Orders &amp; Fulfilment Queue
+    </h2>
+    <p class="text-secondary small mb-0">
+      Enterprise customer commitments, delivery deadlines, priority queues and disruption impact assessments.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('logistics.disruptions') }}" class="btn btn-sm btn-outline-danger">
+      <i class="bi bi-exclamation-octagon me-1"></i> View Active Disruptions
+    </a>
+  </div>
+</div>
+
+<!-- KPI Cards for Orders -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-title">Total Orders</div>
+      <div class="kpi-value text-white font-monospace">{{ counts.total }}</div>
+      <div class="kpi-subtext text-secondary">Active pipeline</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-title">At-Risk Orders</div>
+      <div class="kpi-value text-danger font-monospace">{{ counts.at_risk }}</div>
+      <div class="kpi-subtext text-secondary">Delayed shipment or shortage</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-title">Platinum Tier Orders</div>
+      <div class="kpi-value text-warning font-monospace">{{ counts.platinum }}</div>
+      <div class="kpi-subtext text-secondary">Highest SLA priority</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-title">Critical Priority</div>
+      <div class="kpi-value text-danger font-monospace">{{ counts.critical }}</div>
+      <div class="kpi-subtext text-secondary">Zero-buffer fulfillment</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters and Orders Table -->
+<div class="control-card">
+  <div class="control-card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+    <form method="GET" action="{{ url_for('logistics.orders') }}" class="d-flex flex-wrap align-items-center gap-2">
+      <!-- Tier Filter -->
+      <select name="tier" class="form-select form-select-sm bg-dark text-white border-secondary" style="width: auto;">
+        <option value="all" {% if current_tier == 'all' or not current_tier %}selected{% endif %}>All Customer Tiers</option>
+        <option value="platinum" {% if current_tier == 'platinum' %}selected{% endif %}>Platinum</option>
+        <option value="gold" {% if current_tier == 'gold' %}selected{% endif %}>Gold</option>
+        <option value="silver" {% if current_tier == 'silver' %}selected{% endif %}>Silver</option>
+        <option value="standard" {% if current_tier == 'standard' %}selected{% endif %}>Standard</option>
+      </select>
+
+      <!-- Priority Filter -->
+      <select name="priority" class="form-select form-select-sm bg-dark text-white border-secondary" style="width: auto;">
+        <option value="all" {% if current_priority == 'all' or not current_priority %}selected{% endif %}>All Priorities</option>
+        <option value="critical" {% if current_priority == 'critical' %}selected{% endif %}>Critical</option>
+        <option value="high" {% if current_priority == 'high' %}selected{% endif %}>High</option>
+        <option value="medium" {% if current_priority == 'medium' %}selected{% endif %}>Medium</option>
+        <option value="low" {% if current_priority == 'low' %}selected{% endif %}>Low</option>
+      </select>
+
+      <input type="text" name="q" value="{{ search_q }}" class="form-control form-control-sm bg-dark text-white border-secondary ms-2" placeholder="Search order #, customer..." style="width: 220px;">
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Filter</button>
+      {% if search_q or (current_tier and current_tier != 'all') or (current_priority and current_priority != 'all') %}
+      <a href="{{ url_for('logistics.orders') }}" class="btn btn-sm btn-outline-danger">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="table-responsive">
+    {% if orders %}
+    <table class="table table-control align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Customer Name</th>
+          <th>Tier</th>
+          <th>Priority</th>
+          <th>Fulfillment Hub</th>
+          <th>Items Ordered</th>
+          <th>Deadline</th>
+          <th>Order Total</th>
+          <th>Status &amp; Risk Impact</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        {% set active_disruptions = o.disruptions.filter_by(status='Active').all() %}
+        <tr {% if o.status == 'At Risk' or active_disruptions %}style="background-color: rgba(239, 68, 68, 0.05);"{% endif %}>
+          <td>
+            <span class="text-white font-monospace fw-bold">{{ o.order_number }}</span>
+          </td>
+          <td>
+            <div class="text-white fw-semibold">{{ o.customer_name }}</div>
+            <div class="text-muted small">Placed: {{ o.order_date.strftime('%Y-%m-%d') }}</div>
+          </td>
+          <td>
+            {% if o.customer_tier == 'Platinum' %}
+              <span class="badge bg-warning text-dark fw-bold"><i class="bi bi-star-fill me-1"></i>Platinum</span>
+            {% elif o.customer_tier == 'Gold' %}
+              <span class="badge bg-info text-dark fw-bold">Gold</span>
+            {% elif o.customer_tier == 'Silver' %}
+              <span class="badge bg-secondary">Silver</span>
+            {% else %}
+              <span class="badge bg-dark text-secondary border border-secondary">Standard</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if o.priority == 'Critical' %}
+              <span class="badge bg-danger">Critical</span>
+            {% elif o.priority == 'High' %}
+              <span class="badge bg-warning text-dark">High</span>
+            {% elif o.priority == 'Medium' %}
+              <span class="badge bg-primary">Medium</span>
+            {% else %}
+              <span class="badge bg-secondary">Low</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge bg-dark text-info border border-secondary font-monospace">
+              {{ o.assigned_warehouse.code if o.assigned_warehouse else 'Unassigned' }}
+            </span>
+          </td>
+          <td>
+            {% for item in o.items %}
+            <div class="small">
+              <span class="text-warning font-monospace">{{ item.sku }}</span>:
+              <span class="text-white fw-semibold">{{ item.quantity }}</span> units
+            </div>
+            {% endfor %}
+          </td>
+          <td>
+            <div class="text-white small font-monospace">
+              {{ o.delivery_deadline.strftime('%Y-%m-%d') if o.delivery_deadline else 'TBD' }}
+            </div>
+          </td>
+          <td>
+            <span class="text-white font-monospace fw-bold">${{ "{:,.2f}".format(o.total_amount) }}</span>
+          </td>
+          <td>
+            <div class="d-flex flex-column gap-1">
+              {% if o.status == 'At Risk' or active_disruptions %}
+                <span class="badge bg-danger"><i class="bi bi-exclamation-diamond-fill me-1"></i>At Risk</span>
+                {% for d in active_disruptions %}
+                <a href="{{ url_for('logistics.disruption_detail', disruption_id=d.id) }}" class="badge bg-dark text-danger border border-danger text-decoration-none" title="Linked Disruption">
+                  <i class="bi bi-link-45deg"></i> {{ d.disruption_code }}
+                </a>
+                {% endfor %}
+              {% elif o.status == 'Fulfilled' %}
+                <span class="badge bg-success"><i class="bi bi-check2-all me-1"></i>Fulfilled</span>
+              {% elif o.status == 'Allocated' %}
+                <span class="badge bg-info text-dark">Allocated</span>
+              {% elif o.status == 'Processing' %}
+                <span class="badge bg-primary">Processing</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ o.status }}</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state p-5 text-center">
+      <i class="bi bi-box-seam text-muted fs-1 mb-2"></i>
+      <h4 class="text-white">No Customer Orders Found</h4>
+      <p class="text-secondary">No customer order records matched your current tier or priority filter.</p>
+      <a href="{{ url_for('logistics.orders') }}" class="btn btn-sm btn-outline-warning">Clear Filter</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
